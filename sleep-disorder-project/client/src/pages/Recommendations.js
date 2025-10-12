@@ -15,17 +15,16 @@ const Recommendations = () => {
     useEffect(() => {
         const fetchRecs = async () => {
             try {
-                const res = await api.get('/ml/recommendations');
-                if (res.data && typeof res.data === 'object' && (res.data.error || res.data.message)) {
-                    // If backend returns error object, show error
+                // Use analyze so we get disorder/severity/explanation + recommendations
+                const res = await api.post('/ml/analyze');
+                if (res.data && (res.data.error || res.data.message)) {
                     setError(res.data.error || res.data.message || 'Unknown error');
                     setRecs(null);
                 } else {
                     setRecs(res.data);
                 }
             } catch (err) {
-                // If error is an object, extract message
-                let msg = 'Failed to fetch recommendations. Please try again later.';
+                let msg = 'Failed to fetch AI recommendations. Please try again later.';
                 if (err && err.response && err.response.data) {
                     if (typeof err.response.data === 'object') {
                         msg = err.response.data.error || err.response.data.message || msg;
@@ -94,6 +93,14 @@ const Recommendations = () => {
                     {error && <div className="modern-recs-error">{error}</div>}
                     {recs ? (
                         <>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <h2 style={{ margin: 0 }}>{recs.disorder || 'No clear disorder detected'}</h2>
+                                <div style={{ color: '#6b7280', marginBottom: '0.5rem' }}>Severity: <strong>{recs.severity || 'Unknown'}</strong></div>
+                                {recs.shapPlot ? (
+                                    <img src={`data:image/png;base64,${recs.shapPlot}`} alt="SHAP explanation" style={{ maxWidth: '100%', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.08)', marginBottom: '1rem' }} />
+                                ) : null}
+                                <p style={{ whiteSpace: 'pre-wrap', textAlign: 'left' }}>{recs.explanation}</p>
+                            </div>
                             <RecommendationCard title="Diet" content={recs.diet} color={recColors.diet} />
                             <RecommendationCard title="Sleep Plan" content={recs.sleepPlan} color={recColors.sleepPlan} />
                             <RecommendationCard title="Consulting" content={recs.consulting} color={recColors.consulting} />
