@@ -25,12 +25,34 @@ exports.analyze = async (req, res) => {
     };
     try {
         console.log('ML ANALYZE: Sending to ML API:', mlInput);
-        const response = await axios.post('http://localhost:5002/predict', mlInput);
+        const response = await axios.post('http://localhost:5002/predict', mlInput, { timeout: 3000 });
         console.log('ML ANALYZE: ML API response:', response.data);
-        res.json(response.data);
+        return res.json(response.data);
     } catch (error) {
-        console.error('ML ANALYZE ERROR:', error.message, error.response && error.response.data);
-        res.status(500).json({ error: error.message, details: error.response && error.response.data });
+        console.error('ML ANALYZE ERROR (HTTP ML service):', error.message, error.response && error.response.data);
+        // Fallback: run local Python CLI (predict_cli.py) if HTTP ML service is unavailable
+        try {
+            const py = spawn('python', ['predict_cli.py'], { cwd: __dirname.replace('/server/controllers', '/ml') });
+            py.stdin.write(JSON.stringify(mlInput));
+            py.stdin.end();
+            let out = '';
+            let err = '';
+            py.stdout.on('data', (d) => out += d.toString());
+            py.stderr.on('data', (d) => err += d.toString());
+            py.on('close', (code) => {
+                if (err) console.error('ML CLI stderr:', err);
+                try {
+                    const parsed = JSON.parse(out);
+                    return res.json(parsed);
+                } catch (e) {
+                    console.error('ML CLI parse error:', e, 'raw out:', out);
+                    return res.status(500).json({ error: 'ML service failure', details: out || err });
+                }
+            });
+        } catch (cliErr) {
+            console.error('ML ANALYZE ERROR (CLI fallback):', cliErr);
+            return res.status(500).json({ error: error.message, details: error.response && error.response.data });
+        }
     }
 };
 

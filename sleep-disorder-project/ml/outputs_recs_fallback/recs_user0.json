@@ -1,0 +1,56 @@
+{
+  "user_id": 0,
+  "recs": {
+    "preds": [
+      {
+        "label": 1,
+        "prob": 0.9992828965187073,
+        "tips": [
+          "Create a relaxing bedtime routine.",
+          "Limit screen time before bed."
+        ]
+      },
+      {
+        "label": 6,
+        "prob": 0.0002386493288213387,
+        "tips": [
+          "Track sleep with a diary.",
+          "Consult a clinician if problems persist."
+        ]
+      },
+      {
+        "label": 5,
+        "prob": 0.00016936575411818922,
+        "tips": [
+          "Consider light exercise earlier in the day.",
+          "Avoid vigorous workouts near bedtime."
+        ]
+      }
+    ],
+    "explanation": {
+      "predicted_label": 1,
+      "confidence": 0.9993,
+      "top_features": [
+        {
+          "feature": "hrv_mean",
+          "value": 56.77
+        },
+        {
+          "feature": "movement_mean",
+          "value": 0.582
+        },
+        {
+          "feature": "breathing_mean",
+          "value": 14.895
+        },
+        {
+          "feature": "spo2_mean",
+          "value": 91.53
+        }
+      ],
+      "rationale": [
+        "Predicted based on typical sleep-stage patterns and stable SpO2/HRV metrics."
+      ]
+    }
+  }
+}

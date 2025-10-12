@@ -1,8 +1,9 @@
 import sys
 import json
+import os
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense
 import xgboost as xgb
 import shap
@@ -12,33 +13,147 @@ import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+import joblib
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 
-# Mock training (in reality, train on real dataset)
-def train_models():
-    # Mock data
-    # 0: None, 1: Apnea, 2: Insomnia, 3: RLS, 4: Narcolepsy, 5: PLMD, 6: Hypoxemia, 7: REM Sleep Behavior Disorder
-    X = np.random.rand(200, 5, 1)
-    y = np.random.randint(0, 8, 200)
+# Paths for saved models
+XGB_MODEL_PATH = 'xgb_model.pkl'
+LSTM_MODEL_PATH = 'lstm_model.h5'
+SCALER_PATH = 'scaler.pkl'
 
-    # LSTM for feature extraction (multiclass)
-    lstm = Sequential()
-    lstm.add(LSTM(50, input_shape=(5, 1)))
-    lstm.add(Dense(8, activation='softmax'))
-    lstm.compile(optimizer='adam', loss='categorical_crossentropy')
+
+def train_models_from_csv(csv_path='data.csv', test_size=0.2, lstm_epochs=5):
+    """Train LSTM (for severity/feature extraction) and XGBoost classifier from a CSV file.
+
+    CSV must contain columns: sleepStages (or sleep_stages), hrv, blood_oxygen, movement, breathing, label
+    where label is integer class (0..N-1).
+    """
+    df = pd.read_csv(csv_path)
+    # normalize column names
+    df.columns = [c.strip() for c in df.columns]
+    if 'sleep_stages' in df.columns and 'sleepStages' not in df.columns:
+        df = df.rename(columns={'sleep_stages': 'sleepStages'})
+
+    required = ['sleepStages', 'hrv', 'blood_oxygen', 'movement', 'breathing', 'label']
+    for c in required:
+        if c not in df.columns:
+            raise ValueError(f"Missing required column in CSV: {c}")
+
+    # Prepare data for XGBoost
+    feature_cols = ['sleepStages', 'hrv', 'blood_oxygen', 'movement', 'breathing']
+    X = df[feature_cols].values
+    y = df['label'].values
+
+    # Preprocessing: scale features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Handle class imbalance with sample weights
+    classes = np.unique(y)
+    class_weights = compute_class_weight('balanced', classes=classes, y=y)
+    weight_map = {c: w for c, w in zip(classes, class_weights)}
+    sample_weights = np.array([weight_map[int(lbl)] for lbl in y])
+
+    # Train XGBoost with better defaults for multiclass
+    num_classes = len(classes)
+    xgb_model = xgb.XGBClassifier(
+        objective='multi:softprob',
+        num_class=num_classes,
+        n_estimators=100,
+        max_depth=6,
+        learning_rate=0.1,
+        use_label_encoder=False,
+        eval_metric='mlogloss',
+        n_jobs=-1
+    )
+    xgb_model.fit(X_scaled, y, sample_weight=sample_weights)
+
+    # Prepare sequences for LSTM: use sleepStages as time series windows of fixed length
+    seq_len = 5
+    sleep_vals = df['sleepStages'].astype(float).values
+    X_seq = np.stack([np.array([v] * seq_len).reshape(seq_len, 1) for v in sleep_vals])
+
+    # LSTM targets: use same label but convert to categorical
     from tensorflow.keras.utils import to_categorical
-    lstm.fit(X, to_categorical(y, num_classes=8), epochs=1)
+    num_classes = len(np.unique(y))
+    y_cat = to_categorical(y, num_classes=num_classes)
 
-    # XGBoost for classification (multiclass)
-    features = np.random.rand(200, 5)
-    xgb_model = xgb.XGBClassifier(objective='multi:softmax', num_class=8)
-    xgb_model.fit(features, y)
+    lstm = Sequential()
+    lstm.add(LSTM(32, input_shape=(seq_len, 1)))
+    lstm.add(Dense(num_classes, activation='softmax'))
+    lstm.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    lstm.fit(X_seq, y_cat, epochs=max(1, lstm_epochs), batch_size=16, verbose=1)
+
+    # Save models and scaler
+    joblib.dump(xgb_model, XGB_MODEL_PATH)
+    lstm.save(LSTM_MODEL_PATH)
+    joblib.dump(scaler, SCALER_PATH)
 
     return lstm, xgb_model
 
-lstm_model, xgb_model = train_models()
 
-# SHAP explainer
-explainer = shap.Explainer(xgb_model)
+def load_models():
+    """Load saved models and scaler if available, otherwise return None for each."""
+    lstm = None
+    xgb_model = None
+    scaler = None
+    if os.path.exists(XGB_MODEL_PATH):
+        try:
+            xgb_model = joblib.load(XGB_MODEL_PATH)
+        except Exception:
+            xgb_model = None
+    if os.path.exists(LSTM_MODEL_PATH):
+        try:
+            lstm = load_model(LSTM_MODEL_PATH)
+        except Exception:
+            lstm = None
+    if os.path.exists(SCALER_PATH):
+        try:
+            scaler = joblib.load(SCALER_PATH)
+        except Exception:
+            scaler = None
+    return lstm, xgb_model, scaler
+
+
+# Try to load persisted models; fall back to training on mock data if not present
+lstm_model, xgb_model, scaler = load_models()
+if lstm_model is None or xgb_model is None or scaler is None:
+    try:
+        # attempt to train from provided data.csv if exists
+        base_dir = os.path.dirname(__file__)
+        data_csv = os.path.join(base_dir, 'data.csv')
+        if os.path.exists(data_csv):
+            lstm_model, xgb_model = train_models_from_csv(data_csv, lstm_epochs=3)
+            # reload scaler if saved
+            try:
+                scaler = joblib.load(SCALER_PATH)
+            except Exception:
+                scaler = None
+        else:
+            # fallback to quick mock training
+            import numpy as _np
+            X = _np.random.rand(200, 5, 1)
+            y = _np.random.randint(0, 3, 200)
+            from tensorflow.keras.utils import to_categorical
+            lstm_model = Sequential()
+            lstm_model.add(LSTM(32, input_shape=(5, 1)))
+            lstm_model.add(Dense(3, activation='softmax'))
+            lstm_model.compile(optimizer='adam', loss='categorical_crossentropy')
+            lstm_model.fit(X, to_categorical(y, num_classes=3), epochs=1)
+            xgb_model = xgb.XGBClassifier(objective='multi:softprob', num_class=3)
+            xgb_model.fit(_np.random.rand(200, 5), y)
+    except Exception as e:
+        print('Model loading/training fallback failed:', e)
+
+# SHAP explainer (only if xgb_model exists)
+explainer = None
+if xgb_model is not None:
+    try:
+        explainer = shap.Explainer(xgb_model)
+    except Exception:
+        explainer = None
 
 def analyze(data):
     # Validate and preprocess input
@@ -75,19 +190,41 @@ def analyze(data):
         blood_oxygen = float(data['blood_oxygen'])
         movement = float(data['movement'])
         breathing = float(data['breathing'])
-        # Prepare DataFrame for XGBoost
-        df = pd.DataFrame([{
-            'sleepStages': sleepStages_num[0],
-            'hrv': hrv,
-            'blood_oxygen': blood_oxygen,
-            'movement': movement,
-            'breathing': breathing
-        }])
-        features = df[['sleepStages', 'hrv', 'blood_oxygen', 'movement', 'breathing']].values
-        # LSTM expects sleepStages as array of numbers
-        timesteps = np.array(sleepStages_num).reshape(1, -1, 1)
+
+        # Support both old-style single-value features and new sequence inputs
+        seq_len = 30
+        # If the caller provided sequences (sleep_seq / spo2_seq), parse them; otherwise fall back to sleepStages
+        sleep_seq = None
+        spo2_seq = None
+        if 'sleep_seq' in data:
+            sleep_seq = data['sleep_seq'] if isinstance(data['sleep_seq'], list) else str(data['sleep_seq'])
+        if 'spo2_seq' in data:
+            spo2_seq = data['spo2_seq'] if isinstance(data['spo2_seq'], list) else str(data['spo2_seq'])
+
+        # Build a temporary dataframe row compatible with pipeline.engineer_features
+        tmp = {
+            'sleep_seq': sleep_seq if sleep_seq is not None else ','.join(map(str, sleepStages_num)),
+            'spo2_seq': spo2_seq if spo2_seq is not None else ','.join([str(blood_oxygen)] * seq_len),
+            'hrv_mean': hrv,
+            'movement_mean': movement,
+            'breathing_mean': breathing,
+            'label': 0
+        }
+        import pipeline as pl
+        Xf, Xs = pl.engineer_features(pd.DataFrame([tmp]), seq_len=seq_len)
+        features = Xf.values
+        # Apply scaler if available (XGBoost was trained on scaled features)
+        local_scaler = scaler if 'scaler' in globals() else None
+        if local_scaler is not None:
+            features_scaled = local_scaler.transform(features)
+        else:
+            features_scaled = features
+
+        # LSTM expects sequence array
+        timesteps = Xs
         lstm_pred = lstm_model.predict(timesteps)
-        pred = int(xgb_model.predict(features)[0])
+        pred = int(xgb_model.predict(features_scaled)[0])
+
         disorder_map = {
             0: 'None',
             1: 'Apnea',
@@ -99,34 +236,48 @@ def analyze(data):
             7: 'REM Sleep Behavior Disorder'
         }
         disorder = disorder_map.get(pred, 'Unknown')
-        severity_idx = np.argmax(lstm_pred[0])
-        severity = ['Mild', 'Moderate', 'Severe', 'Severe', 'Severe', 'Severe', 'Severe', 'Severe'][severity_idx]
-        shap_values = explainer(features)
-        print('DEBUG: shap_values shape:', getattr(shap_values, 'shape', None))
-        print('DEBUG: shap_values.values shape:', getattr(shap_values, 'values', None).shape if hasattr(shap_values, 'values') else None)
-        print('DEBUG: shap_values.base_values shape:', getattr(shap_values, 'base_values', None).shape if hasattr(shap_values, 'base_values') else None)
-        plt.figure()
-        # For multiclass, plot the explanation for the predicted class using SHAP Explanation object
-        shap_exp = shap.Explanation(
-            values=shap_values.values[0, :, pred],
-            base_values=shap_values.base_values[0, pred],
-            data=features[0],
-            feature_names=df.columns
-        )
-        shap.plots.waterfall(shap_exp)
-        buf = BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        shap_plot = base64.b64encode(buf.read()).decode('utf-8')
+        severity_idx = int(np.argmax(lstm_pred[0]))
+        severity_list = ['Mild', 'Moderate', 'Severe', 'Severe', 'Severe', 'Severe', 'Severe', 'Severe']
+        severity = severity_list[severity_idx] if severity_idx < len(severity_list) else 'Moderate'
+
+        shap_plot = ''
+        shap_values = None
+        if explainer is not None:
+            try:
+                shap_values = explainer(features_scaled)
+                plt.figure()
+                # For multiclass, plot the explanation for the predicted class using SHAP Explanation object
+                shap_exp = shap.Explanation(
+                    values=shap_values.values[0, :, pred],
+                    base_values=shap_values.base_values[0, pred],
+                    data=features[0],
+                    feature_names=feature_cols
+                )
+                shap.plots.waterfall(shap_exp)
+                buf = BytesIO()
+                plt.savefig(buf, format='png')
+                buf.seek(0)
+                shap_plot = base64.b64encode(buf.read()).decode('utf-8')
+            except Exception:
+                shap_plot = ''
+
         # More detailed explanation
         severity_desc = {
             'Mild': 'Slight abnormality detected. Monitor your sleep and consider lifestyle adjustments.',
             'Moderate': 'Noticeable abnormality detected. Consider consulting a specialist and improving sleep hygiene.',
             'Severe': 'Severe abnormality detected. Strongly recommended to consult a healthcare professional.'
         }[severity]
-        # Get SHAP value for SpO2 feature
-        spO2_idx = list(df.columns).index('blood_oxygen')
-        spO2_shap = shap_values.values[0, spO2_idx, pred]
+
+        # Get SHAP value for SpO2 feature if available
+        spO2_idx = feature_cols.index('blood_oxygen')
+        if shap_values is not None:
+            try:
+                spO2_shap = float(shap_values.values[0, spO2_idx, pred])
+            except Exception:
+                spO2_shap = 0.0
+        else:
+            spO2_shap = 0.0
+
         explanation = (
             f"Top contributor: SpO2 ({spO2_shap:.2f}). "
             f"Your SpO2: {blood_oxygen} (Normal: 95-100%). "
@@ -332,7 +483,8 @@ if __name__ == '__main__':
     elif mode == 'evaluate':
         import pandas as pd
         import os
-        csv_path = 'test_data.csv'
+        base_dir = os.path.dirname(__file__)
+        csv_path = os.path.join(base_dir, 'test_data.csv')
         if not os.path.exists(csv_path):
             # Create a sample CSV if not present
             sample = pd.DataFrame({
@@ -348,7 +500,17 @@ if __name__ == '__main__':
         test_df = pd.read_csv(csv_path)
         print("Class distribution in test data:")
         print(test_df['label'].value_counts())
-        X_test = test_df[['sleepStages', 'hrv', 'blood_oxygen', 'movement', 'breathing']].values
+        feature_cols = ['sleepStages', 'hrv', 'blood_oxygen', 'movement', 'breathing']
+        X_test = test_df[feature_cols].values
         y_test = test_df['label'].values
-        metrics = evaluate_model(xgb_model, X_test, y_test)
+        # Apply scaler if available
+        if 'scaler' in globals() and scaler is not None:
+            X_test_scaled = scaler.transform(X_test)
+        else:
+            X_test_scaled = X_test
+
+        if xgb_model is None:
+            raise Exception('XGBoost model not loaded. Train first with train.py')
+
+        metrics = evaluate_model(xgb_model, X_test_scaled, y_test)
         print(json.dumps(metrics))

@@ -1,0 +1,23 @@
+[
+  {"id": 0, "category": "sleep", "text": "Maintain a consistent sleep schedule: go to bed and wake up at the same time every day, even on weekends."},
+  {"id": 1, "category": "sleep", "text": "Create a calming bedtime routine: dim lights, read or take a warm shower 30–60 minutes before bed; avoid screens."},
+  {"id": 2, "category": "sleep", "text": "Keep your bedroom cool (around 60–68°F / 15–20°C), dark, and quiet; consider blackout curtains, eye masks, and earplugs."},
+  {"id": 3, "category": "sleep", "text": "Avoid caffeine (coffee, black tea, some sodas) and nicotine at least 6–8 hours before bedtime."},
+  {"id": 4, "category": "diet", "text": "Avoid heavy or spicy meals 2–3 hours before bedtime. If you're hungry, have a light carb+protein snack (e.g., yogurt with banana)."},
+  {"id": 5, "category": "diet", "text": "Limit alcohol near bedtime—while it can make you sleepy initially, it fragments sleep and reduces REM later in the night."},
+  {"id": 6, "category": "exercise", "text": "Aim for regular moderate exercise (30 minutes most days). Avoid intense workouts within 2-3 hours of bedtime."},
+  {"id": 7, "category": "consult", "text": "If you have persistent daytime sleepiness, loud snoring, or witnessed breathing pauses, consult a sleep specialist for evaluation (possible sleep apnea)."},
+  {"id": 8, "category": "consult", "text": "Seek medical attention if you have new or severe insomnia that affects mood, work, or safety—consider referral to a clinician experienced in sleep disorders."},
+  {"id": 9, "category": "mental", "text": "Practice relaxation techniques before bed: diaphragmatic breathing, guided imagery, progressive muscle relaxation, or short mindfulness meditation."},
+  {"id": 10, "category": "sleep", "text": "Limit naps to 20–30 minutes and earlier in the day; long or late naps can make it harder to fall asleep at night."},
+  {"id": 11, "category": "diet", "text": "Include sleep-supportive nutrients: small amounts of tryptophan-rich foods (turkey, milk) and magnesium-rich foods (nuts, leafy greens)."},
+  {"id": 12, "category": "sleep", "text": "Use a sleep diary or app to track bedtime, wake time, naps, caffeine, and alcohol—this helps identify patterns and triggers."},
+  {"id": 13, "category": "diet", "text": "For evening meals, favor lighter proteins and complex carbs; avoid heavy sauces and fried foods close to bedtime."},
+  {"id": 14, "category": "exercise", "text": "If you have trouble sleeping, try morning or early afternoon exercise; gentle evening stretching can help relax muscles without overstimulation."},
+  {"id": 15, "category": "mental", "text": "If stress or anxiety keeps you awake, create a 'worry journal' to offload concerns earlier in the evening and practice calming techniques."},
+  {"id": 16, "category": "consult", "text": "Consider a primary-care consult if sleep problems persist—they can screen for medical causes (thyroid, depression, medications) and refer to specialists."},
+  {"id": 17, "category": "consult", "text": "If you notice sudden weight gain, loud new snoring, or daytime breath-holding episodes, seek immediate medical evaluation for sleep apnea risk."},
+  {"id": 18, "category": "sleep", "text": "Limit screen exposure and blue light before bed; use night-shift display settings or blue-light filters if needed."},
+  {"id": 19, "category": "diet", "text": "Avoid large amounts of liquids in the evening to reduce nighttime bathroom trips; hydrate earlier in the day."},
+  {"id": 20, "category": "mental", "text": "Try cognitive-behavioral strategies for insomnia (CBT-I) if insomnia is chronic—it's effective and recommended before medication."}
+]

@@ -1,0 +1,31 @@
+{
+  "user_id": 0,
+  "user_text": "avg HRV 56.8. avg movement 0.58. avg breathing 14.9. sleep stages: stage0:4, stage1:9, stage2:9, stage3:8",
+  "recs": [
+    {
+      "id": 7,
+      "text": "If you have persistent daytime sleepiness, loud snoring, or witnessed breathing pauses, consult a sleep specialist for evaluation (possible sleep apnea).",
+      "score": 0.4115446209907532
+    },
+    {
+      "id": 17,
+      "text": "If you notice sudden weight gain, loud new snoring, or daytime breath-holding episodes, seek immediate medical evaluation for sleep apnea risk.",
+      "score": 0.34227314591407776
+    },
+    {
+      "id": 9,
+      "text": "Practice relaxation techniques before bed: diaphragmatic breathing, guided imagery, progressive muscle relaxation, or short mindfulness meditation.",
+      "score": 0.3249019980430603
+    },
+    {
+      "id": 12,
+      "text": "Use a sleep diary or app to track bedtime, wake time, naps, caffeine, and alcohol\u00e2\u20ac\u201dthis helps identify patterns and triggers.",
+      "score": 0.3182995319366455
+    },
+    {
+      "id": 1,
+      "text": "Create a calming bedtime routine: dim lights, read or take a warm shower 30\u00e2\u20ac\u201c60 minutes before bed; avoid screens.",
+      "score": 0.2840538024902344
+    }
+  ]
+}
