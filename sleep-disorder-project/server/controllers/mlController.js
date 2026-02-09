@@ -4,7 +4,7 @@ const SleepData = require('../models/SleepData');
 
 exports.analyze = async (req, res) => {
     const axios = require('axios');
-    const userId = req.user.id;
+    const userId = req.userId;
     const latestData = await SleepData.findOne({ userId }).sort({ timestamp: -1 });
     if (!latestData) {
         return res.status(400).json({ error: 'No sleep data found for analysis.' });
@@ -58,7 +58,7 @@ exports.analyze = async (req, res) => {
 
 exports.getRecommendations = async (req, res) => {
     const axios = require('axios');
-    const userId = req.user.id;
+    const userId = req.userId;
     const latestData = await SleepData.findOne({ userId }).sort({ timestamp: -1 });
     if (!latestData) {
         return res.status(400).json({ error: 'No sleep data found for recommendations.' });

@@ -3,9 +3,8 @@ import json
 import os
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import LSTM, Dense
 import xgboost as xgb
+from sklearn.ensemble import RandomForestClassifier
 import shap
 import matplotlib
 matplotlib.use('Agg')  # Use non-GUI backend for Flask
@@ -17,16 +16,16 @@ import joblib
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from typing import Dict
 
 # Paths for saved models
 XGB_MODEL_PATH = 'xgb_model.pkl'
-LSTM_MODEL_PATH = 'lstm_model.h5'
 SCALER_PATH = 'scaler.pkl'
 
 
-def train_models_from_csv(csv_path='data.csv', test_size=0.2, lstm_epochs=5):
-    """Train LSTM (for severity/feature extraction) and XGBoost classifier from a CSV file.
-
+def train_models_from_csv(csv_path='data.csv', test_size=0.2):
+    """Train XGBoost classifier from a CSV file.
+    
     CSV must contain columns: sleepStages (or sleep_stages), hrv, blood_oxygen, movement, breathing, label
     where label is integer class (0..N-1).
     """
@@ -42,8 +41,36 @@ def train_models_from_csv(csv_path='data.csv', test_size=0.2, lstm_epochs=5):
             raise ValueError(f"Missing required column in CSV: {c}")
 
     # Prepare data for XGBoost
-    feature_cols = ['sleepStages', 'hrv', 'blood_oxygen', 'movement', 'breathing']
-    X = df[feature_cols].values
+    # Build initial DataFrame with basic features
+    tmp = {
+        'sleep_seq': df['sleepStages'].astype(str),
+        'spo2_seq': df['blood_oxygen'].astype(str),
+        'hrv_mean': df['hrv'],
+        'movement_mean': df['movement'],
+        'breathing_mean': df['breathing'],
+        'label': df['label']
+    }
+    df_processed = pd.DataFrame(tmp)
+    
+    # Engineer features using pipeline
+    import pipeline as pl
+    Xf, _ = pl.engineer_features(df_processed)
+    
+    # Get required feature order
+    required_features = [
+        'spo2_mean', 'spo2_min', 'spo2_std', 'spo2_roll_mean', 'spo2_roll_std',
+        'spo2_lf_power', 'spo2_hf_power', 'sleep_mean', 'sleep_std', 'hrv',
+        'movement', 'breathing', 'hrv_x_movement', 'spo2_x_sleep'
+    ]
+    
+    # Ensure all features exist
+    for feat in required_features:
+        if feat not in Xf.columns:
+            Xf[feat] = 0.0
+            
+    # Reorder columns
+    Xf = Xf[required_features]
+    X = Xf.values
     y = df['label'].values
 
     # Preprocessing: scale features
@@ -70,33 +97,15 @@ def train_models_from_csv(csv_path='data.csv', test_size=0.2, lstm_epochs=5):
     )
     xgb_model.fit(X_scaled, y, sample_weight=sample_weights)
 
-    # Prepare sequences for LSTM: use sleepStages as time series windows of fixed length
-    seq_len = 5
-    sleep_vals = df['sleepStages'].astype(float).values
-    X_seq = np.stack([np.array([v] * seq_len).reshape(seq_len, 1) for v in sleep_vals])
-
-    # LSTM targets: use same label but convert to categorical
-    from tensorflow.keras.utils import to_categorical
-    num_classes = len(np.unique(y))
-    y_cat = to_categorical(y, num_classes=num_classes)
-
-    lstm = Sequential()
-    lstm.add(LSTM(32, input_shape=(seq_len, 1)))
-    lstm.add(Dense(num_classes, activation='softmax'))
-    lstm.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-    lstm.fit(X_seq, y_cat, epochs=max(1, lstm_epochs), batch_size=16, verbose=1)
-
     # Save models and scaler
     joblib.dump(xgb_model, XGB_MODEL_PATH)
-    lstm.save(LSTM_MODEL_PATH)
     joblib.dump(scaler, SCALER_PATH)
 
-    return lstm, xgb_model
+    return xgb_model
 
 
 def load_models():
     """Load saved models and scaler if available, otherwise return None for each."""
-    lstm = None
     xgb_model = None
     scaler = None
     if os.path.exists(XGB_MODEL_PATH):
@@ -104,28 +113,29 @@ def load_models():
             xgb_model = joblib.load(XGB_MODEL_PATH)
         except Exception:
             xgb_model = None
-    if os.path.exists(LSTM_MODEL_PATH):
-        try:
-            lstm = load_model(LSTM_MODEL_PATH)
-        except Exception:
-            lstm = None
     if os.path.exists(SCALER_PATH):
         try:
             scaler = joblib.load(SCALER_PATH)
         except Exception:
             scaler = None
-    return lstm, xgb_model, scaler
+    return xgb_model, scaler
 
 
-# Try to load persisted models; fall back to training on mock data if not present
-lstm_model, xgb_model, scaler = load_models()
-if lstm_model is None or xgb_model is None or scaler is None:
-    try:
+# Try to load persisted models or train new ones
+xgb_model, scaler = None, None
+try:
+    # attempt to load saved model
+    if os.path.exists(XGB_MODEL_PATH):
+        xgb_model = joblib.load(XGB_MODEL_PATH)
+    if os.path.exists(SCALER_PATH):
+        scaler = joblib.load(SCALER_PATH)
+        
+    if xgb_model is None:
         # attempt to train from provided data.csv if exists
         base_dir = os.path.dirname(__file__)
         data_csv = os.path.join(base_dir, 'data.csv')
         if os.path.exists(data_csv):
-            lstm_model, xgb_model = train_models_from_csv(data_csv, lstm_epochs=3)
+            xgb_model = train_models_from_csv(data_csv)
             # reload scaler if saved
             try:
                 scaler = joblib.load(SCALER_PATH)
@@ -134,18 +144,12 @@ if lstm_model is None or xgb_model is None or scaler is None:
         else:
             # fallback to quick mock training
             import numpy as _np
-            X = _np.random.rand(200, 5, 1)
+            X = _np.random.rand(200, 5)
             y = _np.random.randint(0, 3, 200)
-            from tensorflow.keras.utils import to_categorical
-            lstm_model = Sequential()
-            lstm_model.add(LSTM(32, input_shape=(5, 1)))
-            lstm_model.add(Dense(3, activation='softmax'))
-            lstm_model.compile(optimizer='adam', loss='categorical_crossentropy')
-            lstm_model.fit(X, to_categorical(y, num_classes=3), epochs=1)
             xgb_model = xgb.XGBClassifier(objective='multi:softprob', num_class=3)
-            xgb_model.fit(_np.random.rand(200, 5), y)
-    except Exception as e:
-        print('Model loading/training fallback failed:', e)
+            xgb_model.fit(X, y)
+except Exception as e:
+    print('Model loading/training fallback failed:', e)
 
 # SHAP explainer (only if xgb_model exists)
 explainer = None
@@ -154,6 +158,62 @@ if xgb_model is not None:
         explainer = shap.Explainer(xgb_model)
     except Exception:
         explainer = None
+
+# Optional: load an LSTM severity model if available (best-effort, non-fatal)
+_lstm_severity_model = None
+try:
+    try:
+        from tensorflow.keras.models import load_model as _load_keras_model  # type: ignore
+    except Exception:
+        _load_keras_model = None  # TensorFlow not installed
+    if _load_keras_model is not None:
+        _base = os.path.dirname(__file__)
+        candidate_paths = [
+            os.path.join(_base, 'lstm_model.h5'),
+            os.path.join(_base, '..', 'lstm_model.h5'),
+            os.path.join(_base, '..', '..', 'lstm_model.h5')
+        ]
+        for p in candidate_paths:
+            if os.path.exists(p):
+                try:
+                    _lstm_severity_model = _load_keras_model(p)
+                    break
+                except Exception:
+                    pass
+except Exception:
+    _lstm_severity_model = None
+
+# Clinical rules engine
+from clinical_rules import evaluate_rules
+
+def _compute_stage_percentages(sleepStages_list) -> Dict[str, float]:
+    """Compute percentage of each stage from list of strings or numbers."""
+    total = 0
+    counts = {'Awake': 0, 'Light': 0, 'Deep': 0, 'REM': 0}
+    # Accept stage names or numeric encodings (Awake=0, Light=1, Deep=2, REM=3 preferred)
+    for s in sleepStages_list:
+        name = None
+        if isinstance(s, str):
+            t = s.strip()
+            if t in counts:
+                name = t
+            elif t.isdigit():
+                n = int(t)
+                inv = {0: 'Awake', 1: 'Light', 2: 'Deep', 3: 'REM'}
+                name = inv.get(n)
+        else:
+            try:
+                n = int(float(s))
+                inv = {0: 'Awake', 1: 'Light', 2: 'Deep', 3: 'REM'}
+                name = inv.get(n)
+            except Exception:
+                name = None
+        if name in counts:
+            counts[name] += 1
+            total += 1
+    if total == 0:
+        return {k: 0.0 for k in counts}
+    return {f"{k.lower()}_percentage": (v / total) * 100.0 for k, v in counts.items()}
 
 def analyze(data):
     # Validate and preprocess input
@@ -201,18 +261,35 @@ def analyze(data):
         if 'spo2_seq' in data:
             spo2_seq = data['spo2_seq'] if isinstance(data['spo2_seq'], list) else str(data['spo2_seq'])
 
+        # Create sequences of 30 values
+        seq_len = 30
+        sleep_seq_full = ','.join(map(str, sleepStages_num))
+        spo2_seq_full = ','.join([str(blood_oxygen)] * seq_len)
+        
         # Build a temporary dataframe row compatible with pipeline.engineer_features
         tmp = {
-            'sleep_seq': sleep_seq if sleep_seq is not None else ','.join(map(str, sleepStages_num)),
-            'spo2_seq': spo2_seq if spo2_seq is not None else ','.join([str(blood_oxygen)] * seq_len),
+            'sleep_seq': sleep_seq_full,
+            'spo2_seq': spo2_seq_full,
             'hrv_mean': hrv,
             'movement_mean': movement,
             'breathing_mean': breathing,
             'label': 0
         }
+        
+        # Use pipeline to engineer full feature set
         import pipeline as pl
+        
+        # Engineer features using pipeline (this will handle feature ordering)
         Xf, Xs = pl.engineer_features(pd.DataFrame([tmp]), seq_len=seq_len)
+        
+        # Debug: Print feature names and values
+        print("\nGenerated features:")
+        print(f"Number of features: {len(Xf.columns)}")
+        for col, val in zip(Xf.columns, Xf.values[0]):
+            print(f"{col}: {val}")
+        
         features = Xf.values
+        
         # Apply scaler if available (XGBoost was trained on scaled features)
         local_scaler = scaler if 'scaler' in globals() else None
         if local_scaler is not None:
@@ -220,10 +297,16 @@ def analyze(data):
         else:
             features_scaled = features
 
-        # LSTM expects sequence array
-        timesteps = Xs
-        lstm_pred = lstm_model.predict(timesteps)
-        pred = int(xgb_model.predict(features_scaled)[0])
+        # Try ML prediction, but fall back to clinical rules on shape mismatch or any failure
+        pred = 0
+        pred_proba = None
+        confidence = 0.0
+        try:
+            pred = int(xgb_model.predict(features_scaled)[0])
+            pred_proba = xgb_model.predict_proba(features_scaled)[0]
+            confidence = float(pred_proba[pred])
+        except Exception as e:
+            print(f"Warning: ML prediction failed, using rules-only fallback: {e}")
 
         disorder_map = {
             0: 'None',
@@ -236,9 +319,71 @@ def analyze(data):
             7: 'REM Sleep Behavior Disorder'
         }
         disorder = disorder_map.get(pred, 'Unknown')
-        severity_idx = int(np.argmax(lstm_pred[0]))
-        severity_list = ['Mild', 'Moderate', 'Severe', 'Severe', 'Severe', 'Severe', 'Severe', 'Severe']
-        severity = severity_list[severity_idx] if severity_idx < len(severity_list) else 'Moderate'
+        
+        # Determine severity baseline from prediction probability (or fallback Mild)
+        if pred_proba is not None:
+            if confidence > 0.8:
+                severity = 'Severe'
+            elif confidence > 0.5:
+                severity = 'Moderate'
+            else:
+                severity = 'Mild'
+        else:
+            severity = 'Moderate'
+
+        # Compute stage percentages for rules
+        stage_metrics = _compute_stage_percentages(sleepStages_list)
+        # Build metrics for rules
+        metrics_for_rules: Dict[str, float] = {
+            'hrv': hrv,
+            'movement': movement,
+            'blood_oxygen': blood_oxygen,
+            'breathing': breathing,
+            **stage_metrics,
+        }
+        rule_suggestions = evaluate_rules(metrics_for_rules)
+
+        # If ML prediction failed entirely, use top rule for disorder & severity
+        final_disorder = disorder
+        if pred_proba is None:
+            if rule_suggestions:
+                top_rule = rule_suggestions[0]
+                final_disorder = str(top_rule.get('disorder', 'None'))
+                severity = str(top_rule.get('severity', 'Moderate'))
+                confidence = 0.0
+            else:
+                rule_suggestions = []
+        else:
+            # Hybrid decision: if clinical rule strongly suggests a disorder and ML is low confidence, adopt it
+            if rule_suggestions:
+                top_rule = rule_suggestions[0]
+                if isinstance(top_rule.get('score'), (int, float)):
+                    rule_score = float(top_rule['score'])
+                else:
+                    rule_score = 0.0
+                rule_disorder = str(top_rule.get('disorder', disorder))
+                # If rules indicate "None" strongly and ML is uncertain, prefer "None"
+                if rule_disorder in ('None', 'Normal Sleep') and rule_score >= 0.8 and confidence < 0.6:
+                    final_disorder = 'None'
+                # If rules strongly indicate a specific disorder different from ML and ML is weak, switch
+                elif rule_disorder not in ('None',) and rule_score >= 0.85 and confidence < 0.55:
+                    final_disorder = rule_disorder
+            else:
+                rule_suggestions = []
+
+        # Optional: refine severity using LSTM if available
+        if _lstm_severity_model is not None:
+            try:
+                # Xs already has shape (1, seq_len, 2)
+                lstm_pred = _lstm_severity_model.predict(Xs, verbose=0)
+                idx = int(np.argmax(lstm_pred[0])) if hasattr(lstm_pred, '__len__') else 0
+                sev_map = {0: 'Mild', 1: 'Moderate', 2: 'Severe'}
+                severity = sev_map.get(idx, severity)
+            except Exception:
+                pass
+        
+        # Use final_disorder for output
+        disorder = final_disorder
 
         shap_plot = ''
         shap_values = None
@@ -247,11 +392,13 @@ def analyze(data):
                 shap_values = explainer(features_scaled)
                 plt.figure()
                 # For multiclass, plot the explanation for the predicted class using SHAP Explanation object
+                # Get feature names from pipeline
+                feature_names = list(Xf.columns)
                 shap_exp = shap.Explanation(
                     values=shap_values.values[0, :, pred],
                     base_values=shap_values.base_values[0, pred],
                     data=features[0],
-                    feature_names=feature_cols
+                    feature_names=feature_names
                 )
                 shap.plots.waterfall(shap_exp)
                 buf = BytesIO()
@@ -269,9 +416,9 @@ def analyze(data):
         }[severity]
 
         # Get SHAP value for SpO2 feature if available
-        spO2_idx = feature_cols.index('blood_oxygen')
         if shap_values is not None:
             try:
+                spO2_idx = list(Xf.columns).index('spo2_mean')
                 spO2_shap = float(shap_values.values[0, spO2_idx, pred])
             except Exception:
                 spO2_shap = 0.0
@@ -294,7 +441,9 @@ def analyze(data):
             'shapPlot': shap_plot,
             'diet': recs['diet'],
             'sleepPlan': recs['sleepPlan'],
-            'consulting': recs['consulting']
+            'consulting': recs['consulting'],
+            'clinical_rules': rule_suggestions[:5],  # top suggestions for transparency
+            'confidence': confidence,
         }
     except Exception as e:
         import traceback

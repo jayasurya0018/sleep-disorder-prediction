@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import AnalysisChart from '../components/AnalysisChart';
 import api from '../api';
-import { AlertTriangle, Utensils, BedDouble, Stethoscope, Download, Share2, SunMoon, Star, ArrowUpRight } from 'lucide-react';
+import { AlertTriangle, Utensils, BedDouble, Stethoscope, Download, Share2, Star, ArrowUpRight, BarChart3, Zap, TrendingUp } from 'lucide-react';
 
 function Analysis() {
 	const [history, setHistory] = useState([]);
@@ -219,513 +219,327 @@ function Analysis() {
 		}
 	} : null;
 
-	function SeverityBadge({ severity }) {
-		const color = severity === 'Severe' ? '#dc2626' : severity === 'Moderate' ? '#f59e42' : '#10b981';
-		return (
-			<span style={{
-				background: color,
-				color: '#fff',
-				borderRadius: '0.7rem',
-				padding: '0.3rem 1rem',
-				fontWeight: 700,
-				fontSize: '1rem',
-				marginLeft: '0.5rem',
-				boxShadow: '0 2px 8px #7f53ac22',
-				display: 'inline-block',
-				letterSpacing: '0.03em',
-				textShadow: '0 2px 8px #23294622',
-				border: '2px solid #fff',
-				transition: 'background 0.2s',
-			}}>{severity}</span>
-		);
-	}
-
-	function RecommendationCard({ title, description, icon, action }) {
-		return (
-			<div style={{
-				background: 'linear-gradient(135deg, #e0e7ff 0%, #f7f8fa 100%)',
-				borderRadius: '1.2rem',
-				boxShadow: '0 4px 24px #7f53ac22',
-				padding: '1.5rem',
-				margin: '0.7rem',
-				minWidth: 240,
-				maxWidth: 320,
-				display: 'flex',
-				flexDirection: 'column',
-				alignItems: 'center',
-				gap: '1rem',
-				transition: 'transform 0.2s',
-				border: '1.5px solid #e0e7ff',
-			}}>
-				<div style={{ fontSize: 38, color: '#7f53ac', marginBottom: 4 }}>{icon}</div>
-				<div style={{ fontWeight: 800, color: '#7f53ac', fontSize: '1.18rem', letterSpacing: '0.02em', textAlign: 'center' }}>{title}</div>
-				<div style={{ fontSize: '1rem', color: '#444', textAlign: 'center', fontWeight: 500 }}>{description}</div>
-				{action && <a href={action.link} target="_blank" rel="noopener noreferrer" style={{
-					background: 'linear-gradient(90deg, #7f53ac 0%, #38b2ac 100%)',
-					color: '#fff',
-					borderRadius: '0.7rem',
-					padding: '0.6rem 1.3rem',
-					fontWeight: 700,
-					textDecoration: 'none',
-					marginTop: '0.5rem',
-					boxShadow: '0 2px 8px #7f53ac22',
-					fontSize: '1rem',
-					letterSpacing: '0.02em',
-					transition: 'background 0.2s',
-				}}>{action.label}</a>}
-			</div>
-		);
-	}
-
-	function NextSteps({ severity }) {
-		if (severity !== 'Severe') return null;
-		return (
-			<div style={{
-				background: 'linear-gradient(135deg, #fff7ed 0%, #ffe4e6 100%)',
-				borderRadius: '1.2rem',
-				boxShadow: '0 4px 24px #f59e42',
-				padding: '1.5rem',
-				margin: '2rem 0',
-				fontWeight: 600,
-				color: '#dc2626',
-				textAlign: 'center',
-				border: '1.5px solid #f59e42',
-				maxWidth: 600,
-				marginLeft: 'auto',
-				marginRight: 'auto',
-			}}>
-				<div style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><AlertTriangle style={{marginRight:8}}/>Severe abnormality detected</div>
-				<div style={{ fontSize: '1.05rem', marginBottom: 10 }}>Strongly recommended to consult a healthcare professional.</div>
-				<div style={{ marginTop: 12 }}>
-					<a href="https://www.sleepfoundation.org/sleep-disorders" target="_blank" rel="noopener noreferrer" style={{
-						background: '#dc2626',
-						color: '#fff',
-						borderRadius: '0.7rem',
-						padding: '0.6rem 1.3rem',
-						fontWeight: 700,
-						textDecoration: 'none',
-						boxShadow: '0 2px 8px #dc2626',
-						fontSize: '1rem',
-						letterSpacing: '0.02em',
-					}}>Find a Specialist</a>
-				</div>
-			</div>
-		);
-	}
-
-	// Dark mode toggle
-	function DarkModeToggle() {
-	  const [dark, setDark] = React.useState(false);
-	  React.useEffect(() => {
-	    document.body.style.background = dark ? 'linear-gradient(135deg, #232946 0%, #232946 100%)' : 'linear-gradient(135deg, #e0e7ff 0%, #f7f8fa 100%)';
-	    document.body.style.color = dark ? '#f7f8fa' : '#232946';
-	  }, [dark]);
-	  return (
-	    <button aria-label="Toggle dark mode" style={{
-	      position: 'fixed',
-	      top: 18,
-	      right: 18,
-	      zIndex: 100,
-	      background: dark ? '#232946' : '#fff',
-	      color: dark ? '#fff' : '#7f53ac',
-	      borderRadius: '50%',
-	      border: '2px solid #7f53ac',
-	      boxShadow: '0 2px 8px #7f53ac22',
-	      padding: 10,
-	      cursor: 'pointer',
-	      transition: 'background 0.2s',
-	    }} onClick={() => setDark(d => !d)}>
-	      <SunMoon />
-	    </button>
-	  );
-	}
-
-	// Animated loading spinner
-	function AnimatedSpinner() {
-	  return (
-	    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 80 }}>
-	      <div style={{
-	        border: '6px solid #e0e7ff',
-	        borderTop: '6px solid #7f53ac',
-	        borderRadius: '50%',
-	        width: 48,
-	        height: 48,
-	        animation: 'spin 1s linear infinite',
-	      }} />
-	      <style>{`@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }`}</style>
-	    </div>
-	  );
-	}
-
-	// Section divider
-	function SectionDivider() {
-	  return <hr style={{ border: 'none', borderTop: '2px solid #e0e7ff', margin: '2rem 0', width: '80%' }} />;
-	}
-
-	// Feedback widget
-	function FeedbackWidget() {
-	  const [feedback, setFeedback] = React.useState(null);
-	  return (
-	    <div style={{ margin: '2rem auto', textAlign: 'center' }}>
-	      <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#7f53ac', marginBottom: 8 }}>Was this analysis helpful?</div>
-	      <button aria-label="Yes" style={{ background: '#10b981', color: '#fff', borderRadius: '0.7rem', padding: '0.5rem 1.2rem', fontWeight: 700, marginRight: 8, border: 'none', cursor: 'pointer' }} onClick={() => setFeedback('yes')}>👍 Yes</button>
-	      <button aria-label="No" style={{ background: '#dc2626', color: '#fff', borderRadius: '0.7rem', padding: '0.5rem 1.2rem', fontWeight: 700, border: 'none', cursor: 'pointer' }} onClick={() => setFeedback('no')}>👎 No</button>
-	      {feedback && <div style={{ marginTop: 10, color: feedback === 'yes' ? '#10b981' : '#dc2626', fontWeight: 700 }}>{feedback === 'yes' ? 'Thank you for your feedback!' : 'We appreciate your feedback!'}</div>}
-	    </div>
-	  );
-	}
-
-	// Download/share report
-	function DownloadShareButtons() {
-	  function handleDownload() {
-	    window.print();
-	  }
-	  function handleShare() {
-	    window.open('mailto:?subject=My Sleep Analysis&body=Check out my sleep analysis report!', '_blank');
-	  }
-	  return (
-	    <div style={{ display: 'flex', gap: 16, justifyContent: 'center', margin: '1.5rem 0' }}>
-	      <button aria-label="Download report" style={{ background: '#7f53ac', color: '#fff', borderRadius: '0.7rem', padding: '0.6rem 1.3rem', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={handleDownload}><Download /> Download</button>
-	      <button aria-label="Share report" style={{ background: '#38b2ac', color: '#fff', borderRadius: '0.7rem', padding: '0.6rem 1.3rem', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }} onClick={handleShare}><Share2 /> Share</button>
-	    </div>
-	  );
-	}
 
 	// Additional Chart: Sleep Duration
 	function SleepDurationChart({ history }) {
-	  const data = {
-	    labels: history.map((entry) => entry && entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : ''),
-	    datasets: [
-	      {
-	        label: 'Sleep Duration (hrs)',
-	        data: history.map((entry) => entry && entry.sleepDuration != null ? entry.sleepDuration : null),
-	        borderColor: '#38b2ac',
-	        backgroundColor: 'rgba(56,178,172,0.15)',
-	        fill: true,
-	      },
-	    ],
-	  };
-	  const options = {
-	    responsive: true,
-	    plugins: {
-	      legend: { position: 'top' },
-	      title: { display: true, text: 'Sleep Duration Over Time' },
-	    },
-	    scales: {
-	      y: { beginAtZero: true, title: { display: true, text: 'Hours' } },
-	    },
-	  };
-	  return <AnalysisChart type="line" data={data} options={options} style={{ height: 300 }} aria-label="Sleep Duration Chart" />;
+		const data = {
+			labels: history.map((entry) => entry && entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : ''),
+			datasets: [
+				{
+					label: 'Sleep Duration (hrs)',
+					data: history.map((entry) => entry && entry.sleepDuration != null ? entry.sleepDuration : null),
+					borderColor: '#38b2ac',
+					backgroundColor: 'rgba(56,178,172,0.15)',
+					fill: true,
+				},
+			],
+		};
+		const options = {
+			responsive: true,
+			plugins: {
+				legend: { position: 'top' },
+				title: { display: true, text: 'Sleep Duration Over Time' },
+			},
+			scales: {
+				y: { beginAtZero: true, title: { display: true, text: 'Hours' } },
+			},
+		};
+		return <AnalysisChart type="line" data={data} options={options} style={{ height: 300 }} aria-label="Sleep Duration Chart" />;
 	}
 
 	// Additional Chart: Breathing Rate
 	function BreathingRateChart({ history }) {
-	  const data = {
-	    labels: history.map((entry) => entry && entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : ''),
-	    datasets: [
-	      {
-	        label: 'Breathing Rate',
-	        data: history.map((entry) => entry && entry.breathing != null ? entry.breathing : null),
-	        borderColor: '#a3e635',
-	        backgroundColor: 'rgba(163,230,53,0.15)',
-	        fill: true,
-	      },
-	    ],
-	  };
-	  const options = {
-	    responsive: true,
-	    plugins: {
-	      legend: { position: 'top' },
-	      title: { display: true, text: 'Breathing Rate Over Time' },
-	    },
-	    scales: {
-	      y: { beginAtZero: true, title: { display: true, text: 'Breaths/min' } },
-	    },
-	  };
-	  return <AnalysisChart type="line" data={data} options={options} style={{ height: 300 }} aria-label="Breathing Rate Chart" />;
+		const data = {
+			labels: history.map((entry) => entry && entry.timestamp ? new Date(entry.timestamp).toLocaleDateString() : ''),
+			datasets: [
+				{
+					label: 'Breathing Rate',
+					data: history.map((entry) => entry && entry.breathing != null ? entry.breathing : null),
+					borderColor: '#a3e635',
+					backgroundColor: 'rgba(163,230,53,0.15)',
+					fill: true,
+				},
+			],
+		};
+		const options = {
+			responsive: true,
+			plugins: {
+				legend: { position: 'top' },
+				title: { display: true, text: 'Breathing Rate Over Time' },
+			},
+			scales: {
+				y: { beginAtZero: true, title: { display: true, text: 'Breaths/min' } },
+			},
+		};
+		return <AnalysisChart type="line" data={data} options={options} style={{ height: 300 }} aria-label="Breathing Rate Chart" />;
 	}
 
-	// Improved Personalized Tips
 	function PersonalizedTips({ mlResult, history }) {
-	  if (!mlResult) return null;
-	  let tips = [];
-	  // Example logic for personalized tips
-	  const last = history && history.length ? history[history.length - 1] : {};
-	  if (last.hrv && last.hrv < 50) tips.push('Your HRV is low. Try relaxation techniques like deep breathing or yoga before bed.');
-	  if (last.movement && last.movement > 8) tips.push('High movement detected. Consider a calming bedtime routine and avoid caffeine late in the day.');
-	  if (last.spo2 && last.spo2 < 95) tips.push('Your SpO2 is below normal. Ensure your sleeping environment is well-ventilated and consult a doctor if this persists.');
-	  if (last.breathing && (last.breathing < 12 || last.breathing > 20)) tips.push('Abnormal breathing rate detected. Practice mindful breathing and consult a healthcare professional if you feel unwell.');
-	  if (!tips.length) tips.push('Keep up the good sleep habits! Try meditation before bed and avoid screens 30 minutes before sleep for better quality.');
-	  return (
-	    <div style={{ background: '#e0e7ff', borderRadius: '1rem', boxShadow: '0 2px 12px #7f53ac11', padding: '1.2rem', margin: '1.5rem auto', maxWidth: 600, textAlign: 'center' }} aria-live="polite">
-	      <div style={{ fontWeight: 700, color: '#7f53ac', fontSize: '1.1rem', marginBottom: 8 }}><Star style={{ marginRight: 6 }} />Personalized Sleep Tips</div>
-	      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-	        {tips.map((tip, i) => (
-	          <li key={i} style={{ fontSize: '1rem', color: '#444', fontWeight: 500, marginBottom: 6 }}>{tip}</li>
-	        ))}
-	      </ul>
-	    </div>
-	  );
+		if (!mlResult) return null;
+		let tips = [];
+		const last = history && history.length ? history[history.length - 1] : {};
+		if (last.hrv && last.hrv < 50) tips.push('Your HRV is low. Try relaxation techniques like deep breathing or yoga before bed.');
+		if (last.movement && last.movement > 8) tips.push('High movement detected. Consider a calming bedtime routine and avoid caffeine late in the day.');
+		if (last.spo2 && last.spo2 < 95) tips.push('Your SpO2 is below normal. Ensure your sleeping environment is well-ventilated and consult a doctor if this persists.');
+		if (last.breathing && (last.breathing < 12 || last.breathing > 20)) tips.push('Abnormal breathing rate detected. Practice mindful breathing and consult a healthcare professional if you feel unwell.');
+		if (!tips.length) tips.push('Keep up the good sleep habits! Try meditation before bed and avoid screens 30 minutes before sleep for better quality.');
+		return (
+			<ul style={{ listStylePosition: 'inside', margin: 0, padding: 0 }}>
+				{tips.map((tip, i) => (
+					<li key={i} style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--foreground))', marginBottom: 'var(--space-sm)', lineHeight: 1.6 }}>{tip}</li>
+				))}
+			</ul>
+		);
 	}
 
-	// Progress tracker
 	function ProgressTracker({ analytics }) {
-	  if (!analytics || !analytics.bestDay || !analytics.worstDay) return null;
-	  const improvement = Math.max(0, ((analytics.bestDay.spo2 + analytics.bestDay.hrv) - (analytics.worstDay.spo2 + analytics.worstDay.hrv)));
-	  return (
-	    <div style={{ background: 'linear-gradient(90deg, #7f53ac 0%, #38b2ac 100%)', borderRadius: '1rem', boxShadow: '0 2px 12px #7f53ac22', padding: '1.2rem', margin: '1.5rem auto', maxWidth: 600, color: '#fff', textAlign: 'center', fontWeight: 700 }}>
-	      <div style={{ fontSize: '1.1rem', marginBottom: 8 }}><ArrowUpRight style={{ marginRight: 6 }} />Your sleep quality improved by {improvement}% this month!</div>
-	    </div>
-	  );
+		if (!analytics || !analytics.bestDay || !analytics.worstDay) return null;
+		const improvement = Math.max(0, ((analytics.bestDay.spo2 + analytics.bestDay.hrv) - (analytics.worstDay.spo2 + analytics.worstDay.hrv)));
+		return (
+			<div className="card fade-in" style={{ background: 'linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary)) 100%)', color: '#fff', textAlign: 'center', padding: 'var(--space-2xl)' }}>
+				<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-md)' }}>
+					<ArrowUpRight size={24} />
+					<div>
+						<div style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)' }}>Sleep Quality Improved</div>
+						<div style={{ fontSize: 'var(--text-sm)', opacity: 0.9 }}>{improvement}% increase this period</div>
+					</div>
+				</div>
+			</div>
+		);
 	}
 
 	return (
-		<>
-			<style>{`
-  body {
-    font-family: 'Inter', 'Poppins', Arial, sans-serif;
-    color: #232946;
-    background: #f7f8fa;
+		<div style={{ padding: 'var(--space-xl) 0' }}>
+			<div className="container-custom">
+				{/* Header */}
+				<div className="card fade-in" style={{ marginBottom: 'var(--space-2xl)', textAlign: 'center' }}>
+					<h1 className="text-gradient" style={{ marginBottom: 'var(--space-sm)' }}>Sleep Analysis</h1>
+					<p style={{ color: 'hsl(var(--muted-foreground))', fontSize: 'var(--text-lg)' }}>
+						AI-powered insights into your sleep patterns
+					</p>
+				</div>
 
-  }
-	
-  .modern-analysis-section {
-    background: #fff;
-    border-radius: 1.5rem;
-    box-shadow: 0 4px 24px #7f53ac22;
-    padding: 2.5rem 2rem;
-    margin: 2rem auto 2.5rem auto;
-    max-width: 700px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-  }
-  .modern-analysis-title {
-    font-size: 2.2rem;
-    font-weight: 800;
-    color: #7f53ac;
-    margin-bottom: 0.5rem;
-    letter-spacing: 0.01em;
-    text-align: center;
-  }
-  .modern-analysis-ml {
-    background: #f7f8fa;
-    color: #232946;
-    border-radius: 1.2rem;
-    box-shadow: 0 2px 12px #7f53ac11;
-    padding: 1.5rem 4rem;
-    width: 100%;
-    margin-top: 1.5rem;
-    font-size: 1.15rem;
-    font-weight: 600;
-    text-align: center;
-    letter-spacing: 0.01em;
-    border: 1.5px solid #e0e7ff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-  }
-  .modern-analysis-label {
-    font-size: 1.1rem;
-    color: #647dee;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    text-align: center;
-  }
-  @media (max-width: 600px) {
-    .modern-analysis-section {
-      padding: 1.2rem 0.5rem;
-      max-width: 98vw;
-    }
-    .modern-analysis-ml {
-      padding: 2rem 0.5rem;
-      font-size: 1rem;
-    }
-  }
-`}</style>
-			<div className="modern-analysis-bg">
-				<div className="modern-analysis-container">
-					<div className="mb-8 animate-fade-in">
-						<h1 className="modern-analysis-title">Sleep Analysis</h1>
-						<p className="modern-analysis-desc">AI-powered insights into your sleep patterns and health trends</p>
+				{/* AI Analysis Result */}
+				{mlLoading ? (
+					<div className="card" style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+						<div className="spinner" style={{ margin: '0 auto' }}></div>
+						<p style={{ marginTop: 'var(--space-md)', color: 'hsl(var(--muted-foreground))' }}>Analyzing your sleep data...</p>
 					</div>
-					{/* ML AI Analysis Result Section */}
-					<div className="mb-10">
-						{mlLoading ? (
-							<div className="text-center text-lg py-6">Loading AI analysis...</div>
-						) : mlError ? (
-							<div className="text-center text-red-500 py-6">{mlError}</div>
-						) : mlResult && (
-							<div className="modern-analysis-ml" style={{ boxShadow: '0 4px 24px #7f53ac22', borderRadius: '1.5rem', padding: '2rem 1.5rem', margin: '2rem auto', maxWidth: 1400, background: 'linear-gradient(135deg, #e0e7ff 0%, #f7f8fa 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-								<h2 className="text-2xl font-bold mb-2 text-primary" style={{ color: '#7f53ac', fontWeight: 800, fontSize: '2rem', marginBottom: 8 }}>AI Sleep Disorder Detection</h2>
-								<div className="flex flex-col md:flex-row flex-wrap gap-8 items-center" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-									<div style={{ minWidth: 220, textAlign: 'left' }}>
-										<div className="text-lg font-semibold" style={{ fontWeight: 700, color: '#232946', fontSize: '1.1rem' }}>Detected Disorder:</div>
-										<div className="text-xl font-bold text-destructive mb-2" style={{ fontWeight: 800, color: '#dc2626', fontSize: '1.3rem', marginBottom: 6 }}>{mlResult.disorder}</div>
-										<div className="text-lg font-semibold" style={{ fontWeight: 700, color: '#232946', fontSize: '1.1rem' }}>Severity:<SeverityBadge severity={mlResult.severity} /></div>
-										<div className="text-base text-muted-foreground mb-2" style={{ fontSize: '1rem', color: '#647dee', marginTop: 8 }}>{mlResult.explanation}</div>
-									</div>
-									{mlResult.shapPlot && (
-										<div className="flex flex-col items-center justify-center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 220 }}>
-											<div className="text-lg font-semibold mb-1" style={{ fontWeight: 700, color: '#7f53ac', marginBottom: 6 }}>Explainable AI (SHAP)</div>
-											<img
-												src={`data:image/png;base64,${mlResult.shapPlot}`}
-												alt="SHAP Explanation"
-												className="rounded-xl shadow-lg max-w-full h-auto"
-												style={{ maxWidth: 400, borderRadius: '1rem', boxShadow: '0 2px 12px #7f53ac22' }}
-											/>
-										</div>
-									)}
+				) : mlError ? (
+					<div className="alert alert-destructive fade-in" style={{ marginBottom: 'var(--space-2xl)' }}>
+						<AlertTriangle size={18} />
+						<p>{mlError}</p>
+					</div>
+				) : mlResult && (
+					<div className="card fade-in" style={{ marginBottom: 'var(--space-2xl)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)' }}>
+						<h2 className="text-gradient" style={{ fontSize: 'var(--text-2xl)', marginBottom: 'var(--space-md)' }}>AI Sleep Disorder Detection</h2>
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
+							<div>
+								<h3 style={{ fontWeight: 'var(--font-bold)', color: 'hsl(var(--foreground))', marginBottom: 'var(--space-sm)' }}>Detected Disorder</h3>
+								<div style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', color: 'hsl(var(--primary))', marginBottom: 'var(--space-sm)' }}>{mlResult.disorder}</div>
+								<div style={{ marginBottom: 'var(--space-sm)' }}>
+									<span style={{ fontWeight: 'var(--font-semibold)', marginRight: 'var(--space-xs)' }}>Severity:</span>
+									<span className="badge" style={{
+										backgroundColor: mlResult.severity === 'Severe' ? 'hsl(var(--destructive))' : mlResult.severity === 'Moderate' ? 'hsl(var(--warning))' : 'hsl(var(--success))',
+										color: '#fff',
+										padding: 'var(--space-xs) var(--space-md)',
+										borderRadius: 'var(--radius-md)',
+										fontWeight: 'var(--font-semibold)',
+										display: 'inline-block'
+									}}>{mlResult.severity}</span>
 								</div>
-								<NextSteps severity={mlResult.severity} />
-								<div className="mt-6 flex flex-wrap gap-4 justify-center" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'stretch', width: '100%' }}>
-									<RecommendationCard
-										title="Diet Recommendation"
-										description={mlResult.diet}
-										icon={<Utensils />}
-										action={{ label: 'Find Nutritionists', link: 'https://www.eatright.org/health/wellness/sleep' }}
-									/>
-									<RecommendationCard
-										title="Sleep Plan"
-										description={mlResult.sleepPlan}
-										icon={<BedDouble />}
-										action={{ label: 'Book Appointment', link: 'https://www.sleepfoundation.org/sleep-doctors' }}
-									/>
-									<RecommendationCard
-										title="Consulting"
-										description={mlResult.consulting}
-										icon={<Stethoscope />}
-										action={{ label: 'Find Sleep Clinics', link: 'https://www.sleepfoundation.org/sleep-clinics' }}
-									/>
+								<p style={{ color: 'hsl(var(--muted-foreground))', fontSize: 'var(--text-sm)' }}>{mlResult.explanation}</p>
+							</div>
+							{mlResult.shapPlot && (
+								<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+									<h3 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)', color: 'hsl(var(--foreground))' }}>Explainable AI (SHAP)</h3>
+									<img src={`data:image/png;base64,${mlResult.shapPlot}`} alt="SHAP Explanation" style={{ maxWidth: '100%', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-lg)' }} />
+								</div>
+							)}
+						</div>
+
+						{/* Recommendations */}
+						{mlResult.severity === 'Severe' && (
+							<div className="alert alert-warning fade-in" style={{ marginTop: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+								<AlertTriangle size={20} />
+								<div>
+									<h4 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-xs)' }}>Severe abnormality detected</h4>
+									<p style={{ marginBottom: 'var(--space-md)' }}>Strongly recommended to consult a healthcare professional.</p>
+									<a href="https://www.sleepfoundation.org/sleep-disorders" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-destructive">Find a Specialist</a>
 								</div>
 							</div>
 						)}
-					</div>
 
-					{loading ? (
-						<div className="text-center text-lg py-12">Loading analysis...</div>
-					) : error ? (
-						<div className="text-center text-red-500 py-12">{error}</div>
-					) : (
-						<>
-							<div className="modern-analysis-analytics grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-								<div>
-									<h2 className="text-lg font-semibold mb-1">SpO2 Levels</h2>
-									<p className="text-xs text-muted-foreground mb-2">Recent blood oxygen trends</p>
-									<AnalysisChart
-										type="line"
-										data={spo2Chart.data}
-										options={spo2Chart.options}
-										style={{ height: 300 }}
-									/>
-								</div>
-								<div>
-									<h2 className="text-lg font-semibold mb-1">HRV</h2>
-									<p className="text-xs text-muted-foreground mb-2">Heart Rate Variability</p>
-									<AnalysisChart
-										type="line"
-										data={hrvChart.data}
-										options={hrvChart.options}
-										style={{ height: 300 }}
-									/>
-								</div>
-								<div>
-									<h2 className="text-lg font-semibold mb-1">Movement</h2>
-									<p className="text-xs text-muted-foreground mb-2">Movement Count</p>
-									<AnalysisChart
-										type="bar"
-										data={movementChart.data}
-										options={movementChart.options}
-										style={{ height: 300 }}
-									/>
-								</div>
-								<div>
-									<h2 className="text-lg font-semibold mb-1">Sleep Stages</h2>
-									<p className="text-xs text-muted-foreground mb-2">Distribution of sleep stages</p>
-									<AnalysisChart
-										type="bar"
-										data={sleepStagesChart.data}
-										options={sleepStagesChart.options}
-										style={{ height: 300 }}
-									/>
-								</div>
+						{/* Recommendation Cards */}
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>
+							<div className="card" style={{ background: 'var(--bg-secondary)', border: 'var(--border-input)', textAlign: 'center' }}>
+								<Utensils size={32} style={{ color: 'hsl(var(--primary))', margin: '0 auto var(--space-md) auto' }} />
+								<h4 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)' }}>Diet Recommendation</h4>
+								<p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>{mlResult.diet}</p>
+								<a href="https://www.eatright.org/health/wellness/sleep" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Learn More</a>
 							</div>
-							<div className="modern-analysis-analytics grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-								{weeklySpo2Chart && (
-									<div className="modern-analysis-section">
-										<h2 className="modern-analysis-title">Weekly Avg SpO2</h2>
-										<p className="modern-analysis-label">Weekly blood oxygen trend</p>
-										<AnalysisChart
-											type="line"
-											data={weeklySpo2Chart.data}
-											options={weeklySpo2Chart.options}
-											style={{ height: 300 }}
-										/>
+							<div className="card" style={{ background: 'var(--bg-secondary)', border: 'var(--border-input)', textAlign: 'center' }}>
+								<BedDouble size={32} style={{ color: 'hsl(var(--primary))', margin: '0 auto var(--space-md) auto' }} />
+								<h4 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)' }}>Sleep Plan</h4>
+								<p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>{mlResult.sleepPlan}</p>
+								<a href="https://www.sleepfoundation.org/sleep-doctors" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Book Appointment</a>
+							</div>
+							<div className="card" style={{ background: 'var(--bg-secondary)', border: 'var(--border-input)', textAlign: 'center' }}>
+								<Stethoscope size={32} style={{ color: 'hsl(var(--primary))', margin: '0 auto var(--space-md) auto' }} />
+								<h4 style={{ fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)' }}>Consulting</h4>
+								<p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>{mlResult.consulting}</p>
+								<a href="https://www.sleepfoundation.org/sleep-clinics" target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-primary">Find Clinics</a>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Charts Section */}
+				{loading ? (
+					<div className="card" style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>
+						<div className="spinner" style={{ margin: '0 auto' }}></div>
+						<p style={{ marginTop: 'var(--space-md)', color: 'hsl(var(--muted-foreground))' }}>Loading analysis...</p>
+					</div>
+				) : error ? (
+					<div className="alert alert-destructive fade-in">
+						<AlertTriangle size={18} />
+						<p>{error}</p>
+					</div>
+				) : (
+					<>
+						{/* Main Charts Grid */}
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-2xl)' }}>
+							<div className="card">
+								<h3 style={{ fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-xs)' }}>SpO2 Levels</h3>
+								<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Recent blood oxygen trends</p>
+								<AnalysisChart type="line" data={spo2Chart.data} options={spo2Chart.options} style={{ height: 300 }} />
+							</div>
+							<div className="card">
+								<h3 style={{ fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-xs)' }}>HRV</h3>
+								<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Heart Rate Variability</p>
+								<AnalysisChart type="line" data={hrvChart.data} options={hrvChart.options} style={{ height: 300 }} />
+							</div>
+							<div className="card">
+								<h3 style={{ fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-xs)' }}>Movement</h3>
+								<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Movement Count</p>
+								<AnalysisChart type="bar" data={movementChart.data} options={movementChart.options} style={{ height: 300 }} />
+							</div>
+							<div className="card">
+								<h3 style={{ fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-xs)' }}>Sleep Stages</h3>
+								<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Sleep stages distribution</p>
+								<AnalysisChart type="bar" data={sleepStagesChart.data} options={sleepStagesChart.options} style={{ height: 300 }} />
+							</div>
+						</div>
+
+						{/* Weekly Trends */}
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-2xl)' }}>
+							{weeklySpo2Chart && (
+								<div className="card">
+									<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+										<TrendingUp size={20} style={{ color: 'hsl(var(--primary))' }} />
+										<h3 style={{ fontWeight: 'var(--font-semibold)' }}>Weekly Avg SpO2</h3>
 									</div>
-								)}
-								{weeklyHrvChart && (
-								<div className="modern-analysis-section">
-									<h2 className="modern-analysis-title">Weekly Avg HRV</h2>
-									<p className="modern-analysis-label">Weekly HRV trend</p>
-									<AnalysisChart
-										type="line"
-										data={weeklyHrvChart.data}
-										options={weeklyHrvChart.options}
-										style={{ width: 600, height: 300 }}
-									/>
+									<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Blood oxygen trend</p>
+									<AnalysisChart type="line" data={weeklySpo2Chart.data} options={weeklySpo2Chart.options} style={{ height: 300 }} />
 								</div>
 							)}
+							{weeklyHrvChart && (
+								<div className="card">
+									<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+										<BarChart3 size={20} style={{ color: 'hsl(var(--primary))' }} />
+										<h3 style={{ fontWeight: 'var(--font-semibold)' }}>Weekly Avg HRV</h3>
+									</div>
+									<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>HRV trend analysis</p>
+									<AnalysisChart type="line" data={weeklyHrvChart.data} options={weeklyHrvChart.options} style={{ height: 300 }} />
+								</div>
+							)}
+						</div>
+
+						{/* Sleep Duration & Breathing Rate */}
+						<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-2xl)' }}>
+							<div className="card">
+								<h3 style={{ fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-xs)' }}>Sleep Duration</h3>
+								<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Total hours slept each night</p>
+								<SleepDurationChart history={safeHistory} />
 							</div>
-							<div className="modern-analysis-analytics mt-10">
-								<h3 className="text-xl font-semibold mb-4 text-primary">Best Sleep Day</h3>
+							<div className="card">
+								<h3 style={{ fontWeight: 'var(--font-semibold)', marginBottom: 'var(--space-xs)' }}>Breathing Rate</h3>
+								<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>Breaths per minute during sleep</p>
+								<BreathingRateChart history={safeHistory} />
+							</div>
+						</div>
+
+						{/* Insights Section */}
+						<div className="card fade-in" style={{ marginBottom: 'var(--space-2xl)', background: 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)' }}>
+							<h3 className="text-lg font-semibold mb-4" style={{ fontWeight: 'var(--font-bold)' }}>
+								<Zap size={20} style={{ display: 'inline-block', marginRight: 'var(--space-sm)', color: 'hsl(var(--primary))' }} />
+								Your Insights
+							</h3>
+							<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--space-md)' }}>
 								{analytics && analytics.bestDay && (
-									<div className="text-green-700 font-semibold">
-										{new Date(analytics.bestDay.timestamp).toLocaleDateString()} - SpO2: {analytics.bestDay.spo2}, HRV: {analytics.bestDay.hrv}, Movement: {analytics.bestDay.movement}
+									<div className="stat-card">
+										<div style={{ color: 'hsl(var(--success))', fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)' }}>Best Sleep Day</div>
+										<div style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))' }}>
+											{new Date(analytics.bestDay.timestamp).toLocaleDateString()}
+										</div>
+										<div style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginTop: 'var(--space-xs)' }}>
+											SpO2: {analytics.bestDay.spo2} | HRV: {analytics.bestDay.hrv}
+										</div>
 									</div>
 								)}
-								<h3 className="text-xl font-semibold mt-8 mb-4 text-destructive">Worst Sleep Day</h3>
 								{analytics && analytics.worstDay && (
-									<div className="text-red-700 font-semibold">
-										{new Date(analytics.worstDay.timestamp).toLocaleDateString()} - SpO2: {analytics.worstDay.spo2}, HRV: {analytics.worstDay.hrv}, Movement: {analytics.worstDay.movement}
+									<div className="stat-card">
+										<div style={{ color: 'hsl(var(--destructive))', fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)' }}>Worst Sleep Day</div>
+										<div style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))' }}>
+											{new Date(analytics.worstDay.timestamp).toLocaleDateString()}
+										</div>
+										<div style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))', marginTop: 'var(--space-xs)' }}>
+											SpO2: {analytics.worstDay.spo2} | HRV: {analytics.worstDay.hrv}
+										</div>
 									</div>
 								)}
-								{analytics && analytics.anomalies.length > 0 && (
-									<div className="mt-8">
-										<h3 className="text-lg font-semibold text-yellow-600">Anomalies Detected</h3>
-										<ul>
-											{analytics.anomalies.map((a, i) => (
-												<li key={i} className="text-yellow-700">
-													{new Date(a.timestamp).toLocaleDateString()} - SpO2: {a.spo2}, HRV: {a.hrv}
-												</li>
-											))}
-										</ul>
+								{analytics && analytics.anomalies && analytics.anomalies.length > 0 && (
+									<div className="stat-card" style={{ background: 'hsl(var(--warning) / 0.1)', borderLeft: '4px solid hsl(var(--warning))' }}>
+										<div style={{ color: 'hsl(var(--warning))', fontWeight: 'var(--font-bold)', marginBottom: 'var(--space-sm)' }}>
+											⚠️ {analytics.anomalies.length} Anomalies
+										</div>
+										<p style={{ fontSize: 'var(--text-xs)', color: 'hsl(var(--muted-foreground))' }}>
+											Detected unusual patterns. Review recommendations above.
+										</p>
 									</div>
 								)}
 							</div>
-							<SectionDivider />
-							<div className="modern-analysis-analytics grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-								<div>
-									<h2 className="text-lg font-semibold mb-1">Sleep Duration</h2>
-									<p className="text-xs text-muted-foreground mb-2">Total hours slept each night</p>
-									<SleepDurationChart history={safeHistory} />
-								</div>
-								<div>
-									<h2 className="text-lg font-semibold mb-1">Breathing Rate</h2>
-									<p className="text-xs text-muted-foreground mb-2">Breaths per minute during sleep</p>
-									<BreathingRateChart history={safeHistory} />
-								</div>
+						</div>
+
+						{/* Personalized Tips */}
+						<div className="card fade-in" style={{ marginBottom: 'var(--space-2xl)', background: 'var(--bg-secondary)' }}>
+							<div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+								<Star size={20} style={{ color: 'hsl(var(--primary))' }} />
+								<h3 style={{ fontWeight: 'var(--font-bold)' }}>Personalized Sleep Tips</h3>
 							</div>
-							<DownloadShareButtons />
-							<FeedbackWidget />
 							<PersonalizedTips mlResult={mlResult} history={safeHistory} />
-							<ProgressTracker analytics={analytics} />
-						</>
-					)}
-				</div>
+						</div>
+
+						{/* Progress & Action Buttons */}
+						{analytics && (
+							<>
+								<ProgressTracker analytics={analytics} />
+								<div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center', flexWrap: 'wrap', marginTop: 'var(--space-2xl)' }}>
+									<button className="btn btn-primary" onClick={() => window.print()}>
+										<Download size={18} />
+										Download Report
+									</button>
+									<button className="btn btn-secondary" onClick={() => window.open('mailto:?subject=My Sleep Analysis&body=Check out my sleep analysis report!', '_blank')}>
+										<Share2 size={18} />
+										Share Report
+									</button>
+								</div>
+							</>
+						)}
+					</>
+				)}
 			</div>
-		</>
+		</div>
 	);
 }
 

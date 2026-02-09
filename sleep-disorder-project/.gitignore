@@ -55,4 +55,5 @@ ml/output.json
 *.spec.js
 
 # Ignore package-lock if using yarn
-package-lock.json
+package-lock.jsonNUL
+server/NUL

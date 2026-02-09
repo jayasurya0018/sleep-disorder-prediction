@@ -12,7 +12,12 @@ import DataInput from './pages/DataInput';
 import Analysis from './pages/Analysis';
 import Recommendations from './pages/Recommendations';
 import Profile from './pages/Profile';
+import LiveMonitoring from './pages/LiveMonitoring';
 import FeedbackButton from './components/FeedbackButton';
+import DataExportPage from './pages/DataExportPage';
+import EmailSettingsPage from './pages/EmailSettingsPage';
+import WearableDevicesPage from './pages/WearableDevicesPage';
+import ReportGenerator from './components/ReportGenerator';
 
 
 import { useContext } from 'react';
@@ -48,7 +53,12 @@ function App() {
             <Route path="/data-input" element={<DataInput />} />
             <Route path="/analysis" element={<Analysis />} />
             <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/live-monitoring" element={<LiveMonitoring />} />
             <Route path="/profile" element={<Profile logout={logout} />} />
+            <Route path="/data-export" element={<DataExportPage />} />
+            <Route path="/reports" element={<ReportGenerator />} />
+            <Route path="/email-settings" element={<EmailSettingsPage />} />
+            <Route path="/wearable-devices" element={<WearableDevicesPage />} />
           </Routes>
         </Router>
         <style>{`

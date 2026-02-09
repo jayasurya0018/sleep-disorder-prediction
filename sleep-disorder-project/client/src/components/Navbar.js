@@ -1,310 +1,323 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ActivityIcon, BarChart3Icon, BrainIcon, HomeIcon, PlusIcon, TargetIcon, LogOutIcon, UserIcon } from 'lucide-react';
+import { ActivityIcon, BarChart3Icon, BrainIcon, HomeIcon, PlusIcon, TargetIcon, LogOutIcon, UserIcon, Radio, Download, Mail, Watch, Menu, X, Moon, Sun } from 'lucide-react';
 import { UserContext } from '../UserContext';
 
 const Navbar = () => {
     const location = useLocation();
     const { user, logout } = useContext(UserContext) || {};
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        const saved = localStorage.getItem('theme');
+        if (saved) return saved === 'dark';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
+    
+    const displayUser = user || JSON.parse(localStorage.getItem('user') || 'null');
+    
     const isActive = (path) => location.pathname === path;
+
+    // Toggle dark mode
+    const toggleDarkMode = () => {
+        const newDarkMode = !isDarkMode;
+        setIsDarkMode(newDarkMode);
+        localStorage.setItem('theme', newDarkMode ? 'dark' : 'light');
+        document.documentElement.classList.toggle('dark', newDarkMode);
+        document.documentElement.setAttribute('data-theme', newDarkMode ? 'dark' : 'light');
+    };
+
+    // Apply saved theme on mount
+    useEffect(() => {
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    }, [isDarkMode]);
+    
     const navItems = [
         { path: '/', label: 'Home', icon: HomeIcon },
         { path: '/dashboard', label: 'Dashboard', icon: BarChart3Icon },
         { path: '/data-input', label: 'Add Data', icon: PlusIcon },
         { path: '/analysis', label: 'Analysis', icon: BrainIcon },
+        { path: '/live-monitoring', label: 'Live', icon: Radio },
         { path: '/recommendations', label: 'Tips', icon: TargetIcon },
+        { path: '/wearable-devices', label: 'Devices', icon: Watch },
+        { path: '/reports', label: 'Export', icon: Download },
+        { path: '/email-settings', label: 'Alerts', icon: Mail },
     ];
+    
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            document.body.classList.add('scroll-lock');
+        } else {
+            document.body.classList.remove('scroll-lock');
+        }
+        return () => document.body.classList.remove('scroll-lock');
+    }, [mobileMenuOpen]);
+    
+    const closeMobileMenu = () => setMobileMenuOpen(false);
+    
     return (
-        <div>
-            <style>{`
-                .modern-navbar {
-                    position: sticky;
-                    top: 0;
-                    z-index: 50;
-                    width: 100%;
-                    background: #f7f8fa;
-                    border-bottom: 1.5px solid #e0e7ff;
-                    box-shadow: 0 4px 24px rgba(100, 125, 222, 0.10);
-                    border-radius: 0 0 2rem 2rem;
-                    transition: background 0.4s;
-                    animation: navbar-fade-in 0.7s;
-                    font-family: 'Inter', 'Poppins', Arial, sans-serif;
-                }
-                .modern-navbar-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 0 1.5rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    height: 4.5rem;
-                }
-                .modern-navbar-logo {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    font-size: 2rem;
-                    font-weight: 800;
-                    color: #7f53ac;
-                    text-shadow: 0 2px 12px #38b2ac11;
-                    transition: transform 0.2s;
-                    letter-spacing: 0.04em;
-                    text-decoration: none;
-                }
-                .modern-navbar-logo:hover {
-                    transform: scale(1.08);
-                }
-                .modern-navbar-links {
-                    display: none;
-                }
-                @media (min-width: 768px) {
-                    .modern-navbar-links {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                    }
-                }
-                .modern-navbar-link-btn {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    padding: 0.7rem 1.5rem;
-                    border-radius: 1rem;
-                    font-weight: 600;
-                    font-size: 1rem;
-                    background: rgba(255,255,255,0.7);
-                    color: #232946;
-                    border: none;
-                    box-shadow: 0 2px 8px rgba(100, 125, 222, 0.08);
-                    transition: background 0.2s, color 0.2s, transform 0.2s;
-                    cursor: pointer;
-                    font-family: 'Inter', 'Poppins', Arial, sans-serif;
-                    text-decoration: none;
-                }
-                .modern-navbar-link-btn.active, .modern-navbar-link-btn:hover {
-                    background: linear-gradient(90deg, #7f53ac 0%, #38b2ac 100%);
-                    color: #fff;
-                    transform: scale(1.04);
-                    box-shadow: 0 4px 16px #38b2ac33;
-                    text-decoration: none;
-                }
-                .modern-navbar-link-btn span {
-                    color: inherit;
-                    text-decoration: none;
-                }
-                .modern-navbar-auth {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-                .modern-navbar-login {
-                    display: none;
-                }
-                @media (min-width: 640px) {
-                    .modern-navbar-login {
-                        display: flex;
-                        color: #7f53ac;
-                        font-weight: 600;
-                        background: rgba(255,255,255,0.7);
-                        border-radius: 1rem;
-                        padding: 0.7rem 1.5rem;
-                        box-shadow: 0 2px 8px rgba(100, 125, 222, 0.08);
-                        transition: background 0.2s, color 0.2s;
-                        font-family: 'Inter', 'Poppins', Arial, sans-serif;
-                        text-decoration: none;
-                    }
-                    .modern-navbar-login:hover {
-                        background: linear-gradient(90deg, #7f53ac 0%, #647dee 100%);
-                        color: #fff;
-                        text-decoration: none;
-                    }
-                }
-                .modern-navbar-register {
-                    background: linear-gradient(90deg, #7f53ac 0%, #38b2ac 100%);
-                    color: #fff;
-                    font-weight: 600;
-                    border-radius: 1rem;
-                    padding: 0.7rem 1.5rem;
-                    box-shadow: 0 2px 8px rgba(100, 125, 222, 0.12);
-                    transition: background 0.2s, color 0.2s, transform 0.2s;
-                    font-family: 'Inter', 'Poppins', Arial, sans-serif;
-                    text-decoration: none;
-                }
-                .modern-navbar-register:hover {
-                    background: linear-gradient(90deg, #232946 0%, #7f53ac 100%);
-                    color: #fff;
-                    transform: scale(1.04);
-                    text-decoration: none;
-                }
-                @keyframes navbar-fade-in {
-                    from { opacity: 0; transform: translateY(-30px); }
-                    to { opacity: 1; transform: none; }
-                }
-                .modern-navbar-mobile {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.3rem;
-                    overflow-x: auto;
-                    padding: 0.5rem 0.2rem 0.7rem 0.2rem;
-                }
-                @media (min-width: 768px) {
-                    .modern-navbar-mobile {
-                        display: none;
-                    }
-                }
-                .navbar-user {
-                  display: flex;
-                  align-items: center;
-                  gap: 0.7rem;
-                  font-weight: 700;
-                  font-size: 1.1rem;
-                  color: #7f53ac;
-                  background: #f7f8fa;
-                  border-radius: 1.2rem;
-                  padding: 0.3rem 1rem;
-                  box-shadow: 0 2px 12px #7f53ac11;
-                  cursor: pointer;
-                  transition: background 0.2s;
-                  position: relative;
-                }
-                .navbar-user-photo {
-                  width: 36px;
-                  height: 36px;
-                  border-radius: 50%;
-                  object-fit: cover;
-                  background: #e0e7ff;
-                  box-shadow: 0 2px 8px #7f53ac22;
-                }
-                .navbar-dropdown {
-                  position: absolute;
-                  top: 48px;
-                  right: 0;
-                  background: #fff;
-                  border-radius: 1rem;
-                  box-shadow: 0 4px 24px #7f53ac22;
-                  min-width: 180px;
-                  z-index: 100;
-                  padding: 1rem;
-                  display: flex;
-                  flex-direction: column;
-                  gap: 0.7rem;
-                }
-                .navbar-dropdown-user {
-                  display: flex;
-                  align-items: center;
-                  gap: 0.7rem;
-                  margin-bottom: 0.5rem;
-                }
-                .navbar-dropdown-photo {
-                  width: 40px;
-                  height: 40px;
-                  border-radius: 50%;
-                  object-fit: cover;
-                  background: #e0e7ff;
-                }
-                .navbar-dropdown-name {
-                  font-weight: 700;
-                  color: #7f53ac;
-                }
-                .navbar-dropdown-email {
-                  font-size: 0.95rem;
-                  color: #444;
-                }
-                .navbar-dropdown-logout {
-                  background: linear-gradient(90deg, #7f53ac 0%, #38b2ac 100%);
-                  color: #fff;
-                  border: none;
-                  border-radius: 0.8rem;
-                  padding: 0.6rem 1.2rem;
-                  font-weight: 700;
-                  cursor: pointer;
-                  transition: background 0.2s;
-                  display: flex;
-                  align-items: center;
-                  gap: 0.5rem;
-                }
-                .navbar-dropdown-logout:hover {
-                  background: linear-gradient(90deg, #38b2ac 0%, #7f53ac 100%);
-                }
-            `}</style>
-            <nav className="modern-navbar" aria-label="Main Navigation">
-                <div className="modern-navbar-container">
+        <>
+            <nav style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 'var(--z-sticky)',
+                background: 'hsl(var(--card))',
+                borderBottom: '1px solid hsl(var(--border))',
+                boxShadow: 'var(--shadow-md)'
+            }}>
+                <div className="container-custom" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    height: '72px'
+                }}>
                     {/* Logo */}
-                    <Link to="/" className="modern-navbar-logo" aria-label="SleepAI Home">
-                        <ActivityIcon style={{ height: 32, width: 32 }} /> SleepAI
+                    <Link to="/" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--space-sm)',
+                        fontSize: 'var(--text-2xl)',
+                        fontWeight: '700',
+                        textDecoration: 'none'
+                    }} className="text-gradient">
+                        <ActivityIcon size={32} />
+                        <span>SleepAI</span>
                     </Link>
+
                     {/* Desktop Navigation */}
-                    <div className="modern-navbar-links">
+                    <div style={{
+                        display: 'none',
+                        gap: 'var(--space-xs)'
+                    }} className="desktop-nav">
                         {navItems.map((item) => {
                             const IconComponent = item.icon;
                             return (
-                                <Link key={item.path} to={item.path} aria-label={item.label} tabIndex={0} style={{ textDecoration: 'none' }}>
-                                    <button
-                                        type="button"
-                                        className={`modern-navbar-link-btn${isActive(item.path) ? ' active' : ''}`}
-                                        aria-current={isActive(item.path) ? 'page' : undefined}
-                                        style={{ textDecoration: 'none' }}
-                                    >
-                                        <IconComponent style={{ height: 20, width: 20 }} />
-                                        <span>{item.label}</span>
-                                    </button>
+                                <Link
+                                    key={item.path}
+                                    to={item.path}
+                                    className={isActive(item.path) ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+                                    style={{ textDecoration: 'none' }}
+                                >
+                                    <IconComponent size={18} />
+                                    <span>{item.label}</span>
                                 </Link>
                             );
                         })}
                     </div>
-                    {/* User Info & Dropdown */}
-                    {user && typeof user === 'object' && typeof user.name === 'string' ? (
-                      <div className="navbar-user" onClick={() => setDropdownOpen((v) => !v)}>
-                        <img src={user.photo || `https://ui-avatars.com/api/?name=${user.name}`} alt="User" className="navbar-user-photo" />
-                        <span>{user.name}</span>
-                        <UserIcon style={{ height: 18, width: 18, color: '#7f53ac' }} />
-                        {dropdownOpen && (
-                          <div className="navbar-dropdown">
-                            <div className="navbar-dropdown-user">
-                              <img src={user.photo || `https://ui-avatars.com/api/?name=${user.name}`} alt="User" className="navbar-dropdown-photo" />
-                              <div>
-                                <div className="navbar-dropdown-name">{user.name}</div>
-                                <div className="navbar-dropdown-email">{typeof user.email === 'string' ? user.email : ''}</div>
-                              </div>
+
+                    {/* User Menu / Auth Buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        {/* Dark Mode Toggle */}
+                        <button
+                            onClick={toggleDarkMode}
+                            className="btn btn-ghost"
+                            aria-label="Toggle dark mode"
+                            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                        >
+                            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                        </button>
+
+                        {displayUser && typeof displayUser === 'object' && displayUser.name ? (
+                            <div style={{ position: 'relative' }}>
+                                <button
+                                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                                    className="btn btn-ghost"
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 'var(--space-sm)'
+                                    }}
+                                >
+                                    <img
+                                        src={displayUser.photo || `https://ui-avatars.com/api/?name=${displayUser.name}`}
+                                        alt={displayUser.name}
+                                        style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            borderRadius: 'var(--radius-full)',
+                                            objectFit: 'cover'
+                                        }}
+                                    />
+                                    <span style={{ display: 'none' }} className="desktop-only">{displayUser.name}</span>
+                                    <UserIcon size={16} />
+                                </button>
+                                
+                                {dropdownOpen && (
+                                    <>
+                                        <div
+                                            style={{
+                                                position: 'fixed',
+                                                inset: 0,
+                                                zIndex: 'var(--z-dropdown)'
+                                            }}
+                                            onClick={() => setDropdownOpen(false)}
+                                        />
+                                        <div
+                                            className="card"
+                                            style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                right: 0,
+                                                marginTop: 'var(--space-sm)',
+                                                minWidth: '200px',
+                                                zIndex: 'calc(var(--z-dropdown) + 1)',
+                                                padding: 'var(--space-md)'
+                                            }}
+                                        >
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 'var(--space-sm)',
+                                                marginBottom: 'var(--space-md)',
+                                                paddingBottom: 'var(--space-sm)',
+                                                borderBottom: '1px solid hsl(var(--border))'
+                                            }}>
+                                                <img
+                                                    src={displayUser.photo || `https://ui-avatars.com/api/?name=${displayUser.name}`}
+                                                    alt={displayUser.name}
+                                                    style={{
+                                                        width: '40px',
+                                                        height: '40px',
+                                                        borderRadius: 'var(--radius-full)',
+                                                        objectFit: 'cover'
+                                                    }}
+                                                />
+                                                <div>
+                                                    <div style={{ fontWeight: '600', color: 'hsl(var(--foreground))' }}>
+                                                        {displayUser.name}
+                                                    </div>
+                                                    <div style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))' }}>
+                                                        {displayUser.email}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Link
+                                                to="/profile"
+                                                className="btn btn-ghost btn-full"
+                                                style={{ marginBottom: 'var(--space-xs)' }}
+                                                onClick={() => setDropdownOpen(false)}
+                                            >
+                                                <UserIcon size={16} />
+                                                View Profile
+                                            </Link>
+                                            <button
+                                                onClick={() => { logout(); setDropdownOpen(false); }}
+                                                className="btn btn-primary btn-full"
+                                            >
+                                                <LogOutIcon size={16} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
-                            <Link to="/profile" style={{ textDecoration: 'none', color: '#7f53ac', fontWeight: 700 }}>View Profile</Link>
-                            <button className="navbar-dropdown-logout" onClick={logout}><LogOutIcon style={{ height: 18, width: 18 }} /> Logout</button>
-                          </div>
+                        ) : (
+                            <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                                <Link to="/login" className="btn btn-ghost btn-sm">
+                                    Login
+                                </Link>
+                                <Link to="/register" className="btn btn-primary btn-sm">
+                                    Register
+                                </Link>
+                            </div>
                         )}
-                      </div>
-                    ) : (
-                      <div className="modern-navbar-auth" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Link to="/login" style={{ textDecoration: 'none' }}>
-                            <button type="button" className="modern-navbar-login" aria-label="Login" style={{ textDecoration: 'none' }}>Login</button>
-                        </Link>
-                        <Link to="/register" style={{ textDecoration: 'none' }}>
-                            <button type="button" className="modern-navbar-register" aria-label="Register" style={{ textDecoration: 'none' }}>Register</button>
-                        </Link>
-                      </div>
-                    )}
+                        
+                        {/* Mobile Menu Button */}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="btn btn-ghost mobile-menu-btn"
+                            aria-label="Toggle menu"
+                        >
+                            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                    </div>
                 </div>
-                {/* Mobile Navigation */}
-                <div className="modern-navbar-mobile">
+            </nav>
+
+            {/* Mobile Menu Overlay */}
+            {mobileMenuOpen && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 'var(--z-modal-backdrop)',
+                        backdropFilter: 'blur(4px)'
+                    }}
+                    onClick={closeMobileMenu}
+                />
+            )}
+
+            {/* Mobile Menu Sidebar */}
+            <div
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    right: mobileMenuOpen ? 0 : '-100%',
+                    width: '80%',
+                    maxWidth: '320px',
+                    height: '100vh',
+                    background: 'hsl(var(--card))',
+                    zIndex: 'var(--z-modal)',
+                    transition: 'right var(--transition-base)',
+                    overflowY: 'auto',
+                    padding: 'var(--space-lg)',
+                    boxShadow: 'var(--shadow-xl)'
+                }}
+            >
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 'var(--space-2xl)'
+                }}>
+                    <span className="text-gradient" style={{ fontSize: 'var(--text-2xl)', fontWeight: '700' }}>
+                        Menu
+                    </span>
+                    <button onClick={closeMobileMenu} className="btn btn-ghost" aria-label="Close menu">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
                     {navItems.map((item) => {
                         const IconComponent = item.icon;
                         return (
-                            <Link key={item.path} to={item.path} aria-label={item.label} tabIndex={0} style={{ textDecoration: 'none' }}>
-                                <button
-                                    type="button"
-                                    className={`modern-navbar-link-btn${isActive(item.path) ? ' active' : ''}`}
-                                    style={{ fontSize: 13, padding: '0.5rem 1rem', textDecoration: 'none' }}
-                                    aria-current={isActive(item.path) ? 'page' : undefined}
-                                >
-                                    <IconComponent style={{ height: 16, width: 16 }} />
-                                    <span>{item.label}</span>
-                                </button>
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                onClick={closeMobileMenu}
+                                className={isActive(item.path) ? 'btn btn-primary btn-full' : 'btn btn-ghost btn-full'}
+                                style={{ justifyContent: 'flex-start' }}
+                            >
+                                <IconComponent size={20} />
+                                <span>{item.label}</span>
                             </Link>
                         );
                     })}
                 </div>
-            </nav>
-        </div>
+            </div>
+
+            <style>{`
+                @media (min-width: 1024px) {
+                    .desktop-nav {
+                        display: flex !important;
+                    }
+                    .mobile-menu-btn {
+                        display: none !important;
+                    }
+                    .desktop-only {
+                        display: inline !important;
+                    }
+                }
+            `}</style>
+        </>
     );
 
 }

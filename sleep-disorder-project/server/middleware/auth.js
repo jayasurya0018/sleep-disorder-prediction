@@ -2,26 +2,36 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const authMiddleware = (req, res, next) => {
-    console.log('All headers:', req.headers);
+    const isDebug = process.env.DEBUG_AUTH === 'true';
+    const logDebug = (...args) => {
+        if (isDebug) {
+            console.log(...args);
+        }
+    };
+
     const authHeader = req.header('Authorization');
-    console.log('Raw Authorization header:', authHeader);
     const token = authHeader?.split(' ')[1];
-    console.log('Extracted token:', token);
+    logDebug('Authorization header present:', Boolean(authHeader));
+
     if (!token) {
-        console.log('No token provided');
+        logDebug('No token provided');
         return res.status(401).send('No token');
     }
+
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (!decoded.id) {
-            console.log('Invalid token payload:', decoded);
+        // Extract userId from token - it could be named 'id' or 'userId'
+        const userId = decoded.id || decoded.userId || decoded._id;
+        if (!userId) {
+            logDebug('Invalid token payload');
             return res.status(401).send('Invalid token payload');
         }
+        req.userId = userId;
         req.user = decoded;
-        console.log('JWT verified - User:', req.user);
+        logDebug('JWT verified - User ID:', req.userId);
         next();
     } catch (err) {
-        console.error('JWT error:', err.message, err.stack);
+        console.error('JWT error:', err.message);
         res.status(401).send('Invalid token');
     }
 };

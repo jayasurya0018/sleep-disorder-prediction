@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import AnalysisChart from '../components/AnalysisChart';
 import ProgressBadges from '../components/ProgressBadges';
 import { useNavigate } from 'react-router-dom';
+import { TrendingUp, TrendingDown, Activity, Heart, Moon, AlertCircle } from 'lucide-react';
 import api from '../api';
 
 function Dashboard() {
@@ -16,11 +17,9 @@ function Dashboard() {
             .then(res => {
                 setHistory(res.data || []);
                 setError(null);
-                // Save to localStorage for offline support
                 localStorage.setItem('dashboardHistory', JSON.stringify(res.data || []));
             })
             .catch(err => {
-                // Try to load from localStorage if offline or error
                 const cached = localStorage.getItem('dashboardHistory');
                 if (cached) {
                     setHistory(JSON.parse(cached));
@@ -215,342 +214,296 @@ function Dashboard() {
         }
     } : null;
 
-    const Skeleton = ({ height = 32, width = '100%', style = {} }) => (
-        <div style={{
-            background: 'linear-gradient(90deg,#e0e7ef 25%,#f5f7fa 50%,#e0e7ef 75%)',
-            backgroundSize: '200% 100%',
-            animation: 'skeleton-shimmer 1.2s infinite linear',
-            borderRadius: 12,
-            height,
-            width,
-            margin: '12px 0',
-            ...style
-        }} />
-    );
+    // Quick stats
+    const stats = useMemo(() => {
+        if (!safeHistory.length) return null;
+        const latest = safeHistory[safeHistory.length - 1];
+        const avgSpO2 = Math.round(safeHistory.reduce((a, b) => a + (b.spo2 || 0), 0) / safeHistory.length);
+        const avgHRV = Math.round(safeHistory.reduce((a, b) => a + (b.hrv || 0), 0) / safeHistory.length);
+        const avgMovement = Math.round(safeHistory.reduce((a, b) => a + (b.movement || 0), 0) / safeHistory.length);
+        return { latest, avgSpO2, avgHRV, avgMovement };
+    }, [safeHistory]);
+
+    if (loading) {
+        return (
+            <div className="container-custom" style={{ padding: 'var(--space-2xl) var(--space-md)' }}>
+                <div className="fade-in" style={{ textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto' }}></div>
+                    <p style={{ marginTop: 'var(--space-md)', color: 'hsl(var(--muted-foreground))' }}>
+                        Loading your dashboard...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="container-custom" style={{ padding: 'var(--space-2xl) var(--space-md)' }}>
+                <div className="alert alert-warning">
+                    <AlertCircle size={20} />
+                    {error}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <>
-            <style>{`
-                @keyframes skeleton-shimmer {
-                    0% { background-position: 200% 0; }
-                    100% { background-position: -200% 0; }
-                }
-                body, .modern-dashboard-bg, .modern-dashboard-container {
-                    font-family: 'Inter', 'Poppins', Arial, sans-serif;
-                }
-                .modern-dashboard-bg {
-                    min-height: 100vh;
-                    padding: 2rem 1rem;
-                    background: linear-gradient(135deg, #e0e7ff 0%, #f5f7fa 100%);
-                }
-                .modern-dashboard-container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2.5rem;
-                }
-                .modern-dashboard-title {
-                    font-size: 2.5rem;
-                    font-weight: 800;
-                    font-family: 'Poppins', 'Inter', Arial, sans-serif;
-                    background: linear-gradient(90deg, #7f53ac 0%, #38b2ac 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    color: transparent;
-                    margin-bottom: 1rem;
-                    text-align: center;
-                    text-shadow: 0 2px 12px #38b2ac33;
-                    letter-spacing: 0.02em;
-                    animation: fade-in 0.7s;
-                }
-                .modern-dashboard-desc {
-                    font-size: 1.2rem;
-                    color: #232946cc;
-                    text-align: center;
-                    margin-bottom: 2rem;
-                }
-                .modern-dashboard-btns {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 1rem;
-                    justify-content: center;
-                    margin-bottom: 2rem;
-                }
-                .modern-dashboard-btn {
-                    background: linear-gradient(135deg, #7f53ac 0%, #38b2ac 100%);
-                    color: #fff;
-                    font-weight: 700;
-                    font-size: 1.1rem;
-                    border: none;
-                    border-radius: 1rem;
-                    padding: 1rem 2.2rem;
-                    box-shadow: 0 8px 24px rgba(100, 125, 222, 0.18);
-                    transition: background 0.3s, box-shadow 0.3s, transform 0.2s;
-                    text-transform: uppercase;
-                    letter-spacing: 0.06em;
-                    cursor: pointer;
-                    outline: none;
-                }
-                .modern-dashboard-btn:hover {
-                    background: linear-gradient(135deg, #232946 0%, #7f53ac 100%);
-                    box-shadow: 0 12px 32px rgba(35, 41, 70, 0.18);
-                    transform: translateY(-2px) scale(1.04);
-                }
-                .modern-dashboard-analytics {
-                    background: rgba(255,255,255,0.98);
-                    border-radius: 2rem;
-                    box-shadow: 0 8px 32px rgba(100, 125, 222, 0.18);
-                    padding: 2rem 1.5rem;
-                    margin-bottom: 2rem;
-                    animation: fade-in 0.7s;
-                }
-                .dashboard-table {
-                    background: rgba(255,255,255,0.92);
-                    border-radius: 1.2rem;
-                    box-shadow: 0 4px 16px rgba(100, 125, 222, 0.10);
-                    margin-top: 2rem;
-                    border-collapse: separate;
-                    border-spacing: 0;
-                    overflow: hidden;
-                }
-                .dashboard-table th, .dashboard-table td {
-                    padding: 0.8rem 1.1rem;
-                    text-align: left;
-                }
-                .dashboard-table th {
-                    background: #38b2ac;
-                    color: #fff;
-                    font-weight: 700;
-                }
-                .dashboard-table tr:nth-child(even) {
-                    background: #f5f7fa;
-                }
-                .modern-form-section {
-                    background: #fff;
-                    border-radius: 1.5rem;
-                    box-shadow: 0 4px 24px #7f53ac22;
-                    padding: 2.5rem 2rem;
-                    margin: 2rem auto 2.5rem auto;
-                    max-width: 700px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 1.5rem;
-                }
-                .modern-form-title {
-                    font-size: 2rem;
-                    font-weight: 800;
-                    color: #7f53ac;
-                    margin-bottom: 0.5rem;
-                    letter-spacing: 0.01em;
-                    text-align: center;
-                }
-                .modern-form-label {
-                    font-size: 1.08rem;
-                    color: #232946;
-                    font-weight: 600;
-                    margin-bottom: 0.2rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-                .modern-form-input {
-                    width: 100%;
-                    max-width: 320px;
-                    padding: 0.7rem 1rem;
-                    border-radius: 0.8rem;
-                    border: 1.5px solid #e0e7ff;
-                    background: #f7f8fa;
-                    font-size: 1.05rem;
-                    color: #232946;
-                    font-family: inherit;
-                    margin-top: 0.1rem;
-                    transition: border 0.2s, box-shadow 0.2s;
-                    outline: none;
-                    box-shadow: 0 1px 4px #7f53ac11;
-                }
-                .modern-form-input:focus {
-                    border: 1.5px solid #7f53ac;
-                    box-shadow: 0 2px 12px #7f53ac22;
-                    background: #fff;
-                }
-                @media (max-width: 600px) {
-                    .modern-form-section {
-                        padding: 1.2rem 0.5rem;
-                        max-width: 98vw;
-                    }
-                    .modern-form-input {
-                        max-width: 98vw;
-                        font-size: 0.98rem;
-                        padding: 0.6rem 0.7rem;
-                    }
-                }
-                @keyframes fade-in {
-                    from { opacity: 0; transform: translateY(30px); }
-                    to { opacity: 1; transform: none; }
-                }
-            `}</style>
-            <div className="modern-dashboard-bg">
-                <div className="modern-dashboard-container">
-                    <div>
-                        <h1 className="modern-dashboard-title">Modern Analytics Dashboard</h1>
-                        <p className="modern-dashboard-desc">Beautiful, interactive charts with modern design</p>
-                    </div>
-                    <div className="modern-dashboard-btns">
-                        <button className="modern-dashboard-btn" onClick={() => navigate('/data-input')}>Add Data</button>
-                        <button className="modern-dashboard-btn" onClick={() => navigate('/analysis')}>Run Analysis</button>
-                        <button className="modern-dashboard-btn" onClick={() => navigate('/recommendations')}>View Recommendations</button>
-                    </div>
-                    {/* Progress Badges: demo badges for now, will add real logic next */}
+        <div style={{ padding: 'var(--space-xl) 0' }}>
+            <div className="container-custom">
+                {/* Header */}
+                <div style={{ marginBottom: 'var(--space-2xl)', textAlign: 'center' }}>
+                    <h1 className="text-gradient" style={{ marginBottom: 'var(--space-sm)' }}>
+                        Sleep Analytics Dashboard
+                    </h1>
+                    <p style={{ fontSize: 'var(--text-lg)', color: 'hsl(var(--muted-foreground))' }}>
+                        Track your sleep patterns and health metrics
+                    </p>
+                </div>
+
+                {/* Quick Actions */}
+                <div style={{
+                    display: 'flex',
+                    gap: 'var(--space-sm)',
+                    justifyContent: 'center',
+                    flexWrap: 'wrap',
+                    marginBottom: 'var(--space-2xl)'
+                }}>
+                    <button onClick={() => navigate('/data-input')} className="btn btn-primary">
+                        <Activity size={18} />
+                        Add Data
+                    </button>
+                    <button onClick={() => navigate('/analysis')} className="btn btn-secondary">
+                        <TrendingUp size={18} />
+                        Run Analysis
+                    </button>
+                    <button onClick={() => navigate('/recommendations')} className="btn btn-outline">
+                        <Heart size={18} />
+                        Recommendations
+                    </button>
+                </div>
+
+                {/* Progress Badges */}
+                <div style={{ marginBottom: 'var(--space-2xl)' }}>
                     <ProgressBadges badges={['streak', 'improvement', 'early']} />
-                    {loading ? (
-                        <div>
-                            <Skeleton height={40} width="60%" style={{ margin: '24px auto' }} />
-                            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                                <Skeleton height={220} width="48%" />
-                                <Skeleton height={220} width="48%" />
+                </div>
+
+                {safeHistory.length === 0 ? (
+                    <div className="card" style={{ textAlign: 'center', padding: 'var(--space-3xl)' }}>
+                        <Moon size={64} style={{ margin: '0 auto var(--space-lg)', color: 'hsl(var(--muted-foreground))' }} />
+                        <h3 style={{ marginBottom: 'var(--space-sm)' }}>No Data Yet</h3>
+                        <p style={{ color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-lg)' }}>
+                            Start tracking your sleep to see analytics here
+                        </p>
+                        <button onClick={() => navigate('/data-input')} className="btn btn-primary btn-lg">
+                            Add Your First Entry
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        {/* Stats Cards */}
+                        {stats && (
+                            <div className="grid-auto-fit" style={{ marginBottom: 'var(--space-2xl)' }}>
+                                <div className="stat-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                        <div>
+                                            <div className="stat-label">Avg SpO2</div>
+                                            <div className="stat-value">{stats.avgSpO2}%</div>
+                                        </div>
+                                        <Activity size={24} style={{ color: 'hsl(var(--primary))' }} />
+                                    </div>
+                                </div>
+                                <div className="stat-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                        <div>
+                                            <div className="stat-label">Avg HRV</div>
+                                            <div className="stat-value">{stats.avgHRV}</div>
+                                        </div>
+                                        <Heart size={24} style={{ color: 'hsl(var(--primary))' }} />
+                                    </div>
+                                </div>
+                                <div className="stat-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                        <div>
+                                            <div className="stat-label">Avg Movement</div>
+                                            <div className="stat-value">{stats.avgMovement}</div>
+                                        </div>
+                                        <TrendingUp size={24} style={{ color: 'hsl(var(--primary))' }} />
+                                    </div>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 24 }}>
-                                <Skeleton height={220} width="48%" />
-                                <Skeleton height={220} width="48%" />
+                        )}
+
+                        {/* Charts Grid */}
+                        <div className="grid-auto-fit" style={{ marginBottom: 'var(--space-2xl)' }}>
+                            <div className="card">
+                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', marginBottom: 'var(--space-sm)' }}>
+                                    SpO2 Levels
+                                </h3>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>
+                                    Blood oxygen trends
+                                </p>
+                                <AnalysisChart type="line" data={spo2Chart.data} options={spo2Chart.options} />
                             </div>
-                            <Skeleton height={40} width="80%" style={{ margin: '32px auto' }} />
-                            <Skeleton height={32} width="100%" />
-                            <Skeleton height={32} width="100%" />
+                            
+                            <div className="card">
+                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', marginBottom: 'var(--space-sm)' }}>
+                                    Heart Rate Variability
+                                </h3>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>
+                                    HRV trends
+                                </p>
+                                <AnalysisChart type="line" data={hrvChart.data} options={hrvChart.options} />
+                            </div>
                         </div>
-                    ) : error ? (
-                        <div className="text-center text-red-500 py-12">{error}</div>
-                    ) : history.length > 0 ? (
-                        <>
-                            <div className="modern-dashboard-analytics grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <h2 className="text-lg font-semibold mb-1">SpO2 Levels</h2>
-                                    <p className="text-xs text-muted-foreground mb-2">Recent blood oxygen trends</p>
-                                    <AnalysisChart
-                                        type="line"
-                                        data={spo2Chart.data}
-                                        options={spo2Chart.options}
-                                        style={{ height: 300 }}
-                                    />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-semibold mb-1">HRV</h2>
-                                    <p className="text-xs text-muted-foreground mb-2">Heart Rate Variability</p>
-                                    <AnalysisChart
-                                        type="line"
-                                        data={hrvChart.data}
-                                        options={hrvChart.options}
-                                        style={{ height: 300 }}
-                                    />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-semibold mb-1">Movement</h2>
-                                    <p className="text-xs text-muted-foreground mb-2">Movement Count</p>
-                                    <AnalysisChart
-                                        type="bar"
-                                        data={movementChart.data}
-                                        options={movementChart.options}
-                                        style={{ height: 300 }}
-                                    />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-semibold mb-1">Sleep Stages</h2>
-                                    <p className="text-xs text-muted-foreground mb-2">Distribution of sleep stages</p>
-                                    <AnalysisChart
-                                        type="bar"
-                                        data={sleepStagesChart.data}
-                                        options={sleepStagesChart.options}
-                                        style={{ height: 300 }}
-                                    />
-                                </div>
+
+                        <div className="grid-auto-fit" style={{ marginBottom: 'var(--space-2xl)' }}>
+                            <div className="card">
+                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', marginBottom: 'var(--space-sm)' }}>
+                                    Movement Count
+                                </h3>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>
+                                    Nighttime movement
+                                </p>
+                                <AnalysisChart type="bar" data={movementChart.data} options={movementChart.options} />
                             </div>
-                            <div className="modern-dashboard-analytics grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                            
+                            <div className="card">
+                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', marginBottom: 'var(--space-sm)' }}>
+                                    Sleep Stages
+                                </h3>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>
+                                    Sleep stage distribution
+                                </p>
+                                <AnalysisChart type="bar" data={sleepStagesChart.data} options={sleepStagesChart.options} />
+                            </div>
+                        </div>
+
+                        {/* Weekly Trends */}
+                        {(weeklySpo2Chart || weeklyHrvChart) && (
+                            <div className="grid-auto-fit" style={{ marginBottom: 'var(--space-2xl)' }}>
                                 {weeklySpo2Chart && (
-                                    <div>
-                                        <h2 className="text-lg font-semibold mb-1">Weekly Avg SpO2</h2>
-                                        <p className="text-xs text-muted-foreground mb-2">Weekly blood oxygen trend</p>
-                                        <AnalysisChart
-                                            type="line"
-                                            data={weeklySpo2Chart.data}
-                                            options={weeklySpo2Chart.options}
-                                            style={{ height: 300 }}
-                                        />
+                                    <div className="card">
+                                        <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', marginBottom: 'var(--space-sm)' }}>
+                                            Weekly SpO2 Trend
+                                        </h3>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>
+                                            Weekly averages
+                                        </p>
+                                        <AnalysisChart type="line" data={weeklySpo2Chart.data} options={weeklySpo2Chart.options} />
                                     </div>
                                 )}
                                 {weeklyHrvChart && (
-                                    <div>
-                                        <h2 className="text-lg font-semibold mb-1">Weekly Avg HRV</h2>
-                                        <p className="text-xs text-muted-foreground mb-2">Weekly HRV trend</p>
-                                        <AnalysisChart
-                                            type="line"
-                                            data={weeklyHrvChart.data}
-                                            options={weeklyHrvChart.options}
-                                            style={{ height: 300 }}
-                                        />
+                                    <div className="card">
+                                        <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', marginBottom: 'var(--space-sm)' }}>
+                                            Weekly HRV Trend
+                                        </h3>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))', marginBottom: 'var(--space-md)' }}>
+                                            Weekly averages
+                                        </p>
+                                        <AnalysisChart type="line" data={weeklyHrvChart.data} options={weeklyHrvChart.options} />
                                     </div>
                                 )}
                             </div>
-                            <div className="modern-dashboard-analytics mt-10">
-                                <h3 className="text-xl font-semibold mb-4 text-primary">Best Sleep Day</h3>
-                                {analytics && analytics.bestDay && (
-                                    <div className="text-green-700 font-semibold">
-                                        {new Date(analytics.bestDay.timestamp).toLocaleDateString()} - SpO2: {analytics.bestDay.spo2}, HRV: {analytics.bestDay.hrv}, Movement: {analytics.bestDay.movement}
-                                    </div>
-                                )}
-                                <h3 className="text-xl font-semibold mt-8 mb-4 text-destructive">Worst Sleep Day</h3>
-                                {analytics && analytics.worstDay && (
-                                    <div className="text-red-700 font-semibold">
-                                        {new Date(analytics.worstDay.timestamp).toLocaleDateString()} - SpO2: {analytics.worstDay.spo2}, HRV: {analytics.worstDay.hrv}, Movement: {analytics.worstDay.movement}
-                                    </div>
-                                )}
-                                {analytics && analytics.anomalies.length > 0 && (
-                                    <div className="mt-8">
-                                        <h3 className="text-lg font-semibold text-yellow-600">Anomalies Detected</h3>
-                                        <ul>
-                                            {analytics.anomalies.map((a, i) => (
-                                                <li key={i} className="text-yellow-700">
-                                                    {new Date(a.timestamp).toLocaleDateString()} - SpO2: {a.spo2}, HRV: {a.hrv}
-                                                </li>
-                                            ))}
-                                        </ul>
+                        )}
+
+                        {/* Insights */}
+                        {analytics && (
+                            <div className="card" style={{ marginBottom: 'var(--space-2xl)' }}>
+                                <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: '700', marginBottom: 'var(--space-lg)' }}>
+                                    Sleep Insights
+                                </h2>
+                                
+                                <div style={{ display: 'grid', gap: 'var(--space-lg)', gridTemplateColumns: '1fr', '@media (minWidth: 768px)': { gridTemplateColumns: '1fr 1fr' } }}>
+                                    {analytics.bestDay && (
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
+                                                <TrendingUp size={20} style={{ color: 'hsl(var(--success))' }} />
+                                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', color: 'hsl(var(--success))' }}>
+                                                    Best Sleep Day
+                                                </h3>
+                                            </div>
+                                            <div className="badge badge-success" style={{ marginBottom: 'var(--space-xs)' }}>
+                                                {new Date(analytics.bestDay.timestamp).toLocaleDateString()}
+                                            </div>
+                                            <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))' }}>
+                                                SpO2: {analytics.bestDay.spo2}% | HRV: {analytics.bestDay.hrv} | Movement: {analytics.bestDay.movement}
+                                            </p>
+                                        </div>
+                                    )}
+                                    
+                                    {analytics.worstDay && (
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
+                                                <TrendingDown size={20} style={{ color: 'hsl(var(--destructive))' }} />
+                                                <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', color: 'hsl(var(--destructive))' }}>
+                                                    Needs Improvement
+                                                </h3>
+                                            </div>
+                                            <div className="badge badge-danger" style={{ marginBottom: 'var(--space-xs)' }}>
+                                                {new Date(analytics.worstDay.timestamp).toLocaleDateString()}
+                                            </div>
+                                            <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))' }}>
+                                                SpO2: {analytics.worstDay.spo2}% | HRV: {analytics.worstDay.hrv} | Movement: {analytics.worstDay.movement}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {analytics.anomalies && analytics.anomalies.length > 0 && (
+                                    <div style={{ marginTop: 'var(--space-xl)', padding: 'var(--space-md)', background: 'hsl(var(--warning) / 0.1)', borderRadius: 'var(--radius-lg)', border: '1px solid hsl(var(--warning) / 0.3)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
+                                            <AlertCircle size={20} style={{ color: 'hsl(var(--warning))' }} />
+                                            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: '600', color: 'hsl(var(--warning))' }}>
+                                                Anomalies Detected ({analytics.anomalies.length})
+                                            </h3>
+                                        </div>
+                                        <p style={{ fontSize: 'var(--text-sm)', color: 'hsl(var(--muted-foreground))' }}>
+                                            Days with SpO2 &lt; 92% or HRV &lt; 40
+                                        </p>
                                     </div>
                                 )}
                             </div>
-                            <div className="overflow-x-auto mt-10">
-                                <table className="dashboard-table w-full text-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Sleep Stages</th>
-                                            <th>HRV</th>
-                                            <th>SpO2</th>
-                                            <th>Movement</th>
-                                            <th>Breathing</th>
+                        )}
+
+                        {/* Data Table */}
+                        <div className="card" style={{ overflowX: 'auto' }}>
+                            <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: '700', marginBottom: 'var(--space-lg)' }}>
+                                Recent Entries
+                            </h2>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid hsl(var(--border))' }}>
+                                        <th style={{ padding: 'var(--space-sm)', textAlign: 'left', fontWeight: '600' }}>Date</th>
+                                        <th style={{ padding: 'var(--space-sm)', textAlign: 'left', fontWeight: '600' }}>Sleep Stages</th>
+                                        <th style={{ padding: 'var(--space-sm)', textAlign: 'left', fontWeight: '600' }}>HRV</th>
+                                        <th style={{ padding: 'var(--space-sm)', textAlign: 'left', fontWeight: '600' }}>SpO2</th>
+                                        <th style={{ padding: 'var(--space-sm)', textAlign: 'left', fontWeight: '600' }}>Movement</th>
+                                        <th style={{ padding: 'var(--space-sm)', textAlign: 'left', fontWeight: '600' }}>Breathing</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {safeHistory.slice(-10).reverse().map((entry, idx) => (
+                                        <tr key={entry._id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                                            <td style={{ padding: 'var(--space-sm)' }}>
+                                                {new Date(entry.timestamp).toLocaleDateString()}
+                                            </td>
+                                            <td style={{ padding: 'var(--space-sm)', fontSize: 'var(--text-sm)' }}>
+                                                {Array.isArray(entry.sleepStages) ? entry.sleepStages.join(', ') : entry.sleepStages}
+                                            </td>
+                                            <td style={{ padding: 'var(--space-sm)' }}>{entry.hrv}</td>
+                                            <td style={{ padding: 'var(--space-sm)' }}>{entry.spo2}%</td>
+                                            <td style={{ padding: 'var(--space-sm)' }}>{entry.movement}</td>
+                                            <td style={{ padding: 'var(--space-sm)' }}>{entry.breathing}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {history.map((entry) => (
-                                            <tr key={entry._id}>
-                                                <td>{new Date(entry.timestamp).toLocaleDateString()}</td>
-                                                <td>{Array.isArray(entry.sleepStages) ? entry.sleepStages.join(', ') : entry.sleepStages}</td>
-                                                <td>{entry.hrv}</td>
-                                                <td>{entry.spo2}</td>
-                                                <td>{entry.movement}</td>
-                                                <td>{entry.breathing}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </>
-                    ) : (
-                        <p className="text-center text-muted-foreground">No data available. Add data to get started.</p>
-                    )}
-                </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
             </div>
-        </>
+        </div>
     );
 }
 

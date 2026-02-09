@@ -13,7 +13,12 @@ exports.register = async (req, res) => {
         const hashedPw = await bcrypt.hash(password, 10);
         const user = new User({ email, password: hashedPw, age, gender });
         await user.save();
-        res.status(201).send('User registered');
+        
+        // Generate token for immediate login
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+        const { password: pw, ...userProfile } = user.toObject();
+        
+        res.status(201).json({ token, user: userProfile, message: 'User registered successfully' });
     } catch (err) {
         console.error('Register error:', err.message, err.stack);
         res.status(500).send('Server error');
@@ -38,14 +43,14 @@ exports.login = async (req, res) => {
 };
 exports.getProfile = async (req, res) => {
     try {
-        console.log('Profile request - User ID:', req.user?.id);
-        if (!req.user?.id) {
+        console.log('Profile request - User ID:', req.userId);
+        if (!req.userId) {
             console.log('No user ID in req.user');
             return res.status(401).send('Invalid user data');
         }
-        const user = await User.findById(req.user.id).select('-password');
+        const user = await User.findById(req.userId).select('-password');
         if (!user) {
-            console.log('User not found for ID:', req.user.id);
+            console.log('User not found for ID:', req.userId);
             return res.status(404).send('User not found');
         }
         console.log('User found:', user);
@@ -57,7 +62,7 @@ exports.getProfile = async (req, res) => {
 };
 exports.updateProfile = async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         console.log('updateProfile called. User ID:', userId);
         console.log('Request body:', JSON.stringify(req.body));
         if (!userId) {

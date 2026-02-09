@@ -97,10 +97,26 @@ def engineer_features(df, seq_len=30):
         seqs.append(seq_arr)
 
     X_features = pd.DataFrame(feature_rows)
-    # Polynomial interactions (pairwise)
-    # keep small to avoid explosion
+    
+    # Add polynomial interactions (pairwise)
     X_features['hrv_x_movement'] = X_features['hrv'] * X_features['movement']
     X_features['spo2_x_sleep'] = X_features['spo2_mean'] * X_features['sleep_mean']
+    
+    # Define required feature order
+    required_features = [
+        'spo2_mean', 'spo2_min', 'spo2_std', 'spo2_roll_mean', 'spo2_roll_std',
+        'spo2_lf_power', 'spo2_hf_power', 'sleep_mean', 'sleep_std', 'hrv',
+        'movement', 'breathing', 'hrv_x_movement', 'spo2_x_sleep'
+    ]
+    
+    # Ensure all features exist
+    for feat in required_features:
+        if feat not in X_features.columns:
+            X_features[feat] = 0.0
+            
+    # Reorder columns to match training data
+    X_features = X_features[required_features]
+    
     X_seq = np.stack(seqs)  # shape (n_samples, seq_len, 2)
     return X_features, X_seq
 
