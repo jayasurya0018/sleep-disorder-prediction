@@ -12,11 +12,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# dotenv environment variables
+# dotenv environment variables (SENSITIVE)
 .env
 .env.*
+.env.local
+.env.production
+.env.development
 client/.env
 server/.env
+ml/.env
+**/.env
 
 # Python
 __pycache__/
@@ -57,3 +62,45 @@ ml/output.json
 # Ignore package-lock if using yarn
 package-lock.jsonNUL
 server/NUL
+
+# Sensitive data exports (USER DATA)
+exports/
+server/exports/
+*.csv
+!ml/data.csv
+!ml/data_aug.csv
+!ml/test_data.csv
+
+# ML model files (LARGE FILES)
+*.h5
+*.keras
+*.pkl
+*.joblib
+ml/*.h5
+ml/*.keras
+ml/cnn_*.h5
+ml/lstm_*.h5
+
+# Database dumps and backups (SENSITIVE)
+*.sql
+*.dump
+*.bak
+*.backup
+
+# API Keys and tokens (SENSITIVE)
+**/config/keys.js
+**/config/secrets.js
+*.pem
+*.key
+*.cert
+id_rsa*
+*.p12
+
+# Session and cache
+.cache/
+tmp/
+temp/
+*.tmp
+
+# Client startup logs
+client/client-startup.log
